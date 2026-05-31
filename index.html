@@ -3,167 +3,170 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>TikTok – Global Trending</title>
+<title>TikTok – Global</title>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{width:100%;height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;overflow:hidden;overscroll-behavior:none}
-  .app{position:relative;width:100%;height:100%;max-width:500px;margin:0 auto;background:#000}
-  .feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch}
-  .feed::-webkit-scrollbar{display:none}
-  .video-wrap{position:relative;width:100%;height:100vh;scroll-snap-align:start;background:#000;display:flex;align-items:center;justify-content:center}
-  video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-  .top{position:absolute;top:0;left:0;right:0;height:88px;padding-top:44px;display:flex;align-items:center;justify-content:space-between;padding:44px 12px 0;z-index:20;background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);pointer-events:none}
-  .top-left{display:flex;align-items:center;gap:16px}
-  .live{font-size:15px;font-weight:700;display:flex;align-items:center;gap:4px}
-  .live svg{width:20px;height:20px}
-  .tabs{display:flex;gap:18px;font-size:16px;font-weight:500;color:#ccc}
-  .tabs .active{color:#fff;position:relative}
-  .tabs .active:after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:24px;height:3px;background:#fff;border-radius:2px}
-  .top-right svg{width:24px;height:24px}
-  .right{position:absolute;right:8px;bottom:140px;display:flex;flex-direction:column;align-items:center;gap:22px;z-index:20}
-  .record{width:48px;height:48px;border-radius:50%;background:#222;display:flex;align-items:center;justify-content:center;animation:spin 3s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .record svg{width:28px;height:28px;fill:#fff;opacity:.9}
-  .avatar-wrap{position:relative}
-  .avatar{width:48px;height:48px;border-radius:50%;border:2px solid #fff;object-fit:cover;background:#333}
-  .follow{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:22px;height:22px;background:#fe2c55;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #000}
-  .follow svg{width:12px;height:12px;stroke:#fff;stroke-width:3}
-  .action{display:flex;flex-direction:column;align-items:center;gap:4px}
-  .action-btn{width:48px;height:48px;display:flex;align-items:center;justify-content:center}
-  .action-btn svg{width:34px;height:34px;fill:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
-  .action-count{font-size:13px;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.8)}
-  .bottom{position:absolute;left:0;right:80px;bottom:90px;padding:0 12px;z-index:20;pointer-events:none}
-  .username{font-size:16px;font-weight:600;margin-bottom:6px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
-  .caption{font-size:15px;line-height:1.3;margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.8);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .music-row{display:flex;align-items:center;gap:6px}
-  .music-pill{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.15);padding:3px 8px;border-radius:4px;font-size:12px;backdrop-filter:blur(10px)}
-  .music-text{font-size:13px;opacity:.95;text-shadow:0 1px 2px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
-  .nav{position:absolute;bottom:0;left:0;right:0;height:83px;background:#000;border-top:1px solid #222;display:flex;justify-content:space-around;align-items:flex-start;padding-top:8px;z-index:30}
-  .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;color:#888;font-size:10px}
-  .nav-item.active{color:#fff}
-  .nav-item svg{width:26px;height:26px}
-  .nav-plus{width:44px;height:32px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;top:2px}
-  .nav-plus:before{content:'';position:absolute;inset:-3px;background:linear-gradient(90deg,#25f4ee,#fe2c55);border-radius:10px;z-index:-1}
-  .nav-plus svg{width:20px;height:20px;stroke:#000;stroke-width:3}
-  .starter{position:absolute;inset:0;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:12px;cursor:pointer}
-  .starter.hide{display:none}
-  .starter .play{width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(20px)}
-  .starter .play svg{width:32px;height:32px;fill:#fff;margin-left:3px}
-  .starter div{font-size:17px;font-weight:600}
-  .starter span{font-size:14px;opacity:.7}
-  .loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;font-size:14px;opacity:.7}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,system-ui;overflow:hidden}
+.app{position:relative;width:100%;height:100%;max-width:500px;margin:0 auto}
+.feed{height:100%;overflow:hidden;position:relative}
+.video-wrap{position:absolute;inset:0;display:none}
+.video-wrap.active{display:block}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.top{position:absolute;top:0;left:0;right:0;height:88px;padding-top:44px;display:flex;align-items:center;justify-content:space-between;padding:44px 12px 0;z-index:20;background:linear-gradient(180deg,rgba(0,0,0,.7),transparent)}
+.tabs{display:flex;gap:18px;font-size:16px;font-weight:500;color:#888}
+.tabs span{transition:color.2s}
+.tabs.active{color:#fff;position:relative}
+.tabs.active:after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:24px;height:3px;background:#fff;border-radius:2px}
+.right{position:absolute;right:8px;bottom:140px;display:flex;flex-direction:column;align-items:center;gap:20px;z-index:20}
+.avatar{width:48px;height:48px;border-radius:50%;border:2px solid #fff;background:#333}
+.action{display:flex;flex-direction:column;align-items:center;gap:4px}
+.action svg{width:32px;height:32px;fill:#fff;filter:drop-shadow(0 1px 3px #000)}
+.action-count{font-size:12px;font-weight:600;text-shadow:0 1px 2px #000}
+.bottom{position:absolute;left:12px;right:80px;bottom:100px;z-index:20}
+.username{font-size:16px;font-weight:600;margin-bottom:4px;text-shadow:0 1px 3px #000}
+.caption{font-size:14px;text-shadow:0 1px 3px #000}
+.starter{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:12px}
+.starter.hide{display:none}
+.play-btn{width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
+.play-btn svg{width:30px;height:30px;fill:#fff;margin-left:3px}
+.debug{position:absolute;top:100px;left:12px;background:rgba(0,0,0,.8);padding:6px 10px;border-radius:6px;font:11px monospace;z-index:50}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="starter" id="starter">
-    <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
-    <div>Tap to start</div>
-    <span>Global trending • Sound on</span>
+    <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+    <div>Tap to start with sound</div>
   </div>
-  <div class="loading" id="loading" style="display:none">Loading trending...</div>
+
   <div class="feed" id="feed"></div>
+
+  <div class="debug" id="debug">Ready</div>
+
   <div class="top">
-    <div class="top-left">
-      <div class="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8.5C2 5 5 3 8.5 3H12"/><path d="M22 8.5C22 5 19 3 15.5 3H12"/><rect x="2" y="7" width="20" height="14" rx="2"/></svg>LIVE</div>
-      <div class="tabs"><span>Explore</span><span>Local</span><span>Following</span><span>Shop</span><span class="active">For You</span></div>
+    <div class="tabs" id="tabs">
+      <span data-tab="0">Explore</span>
+      <span data-tab="1">Local</span>
+      <span data-tab="2">Following</span>
+      <span data-tab="3">Shop</span>
+      <span data-tab="4" class="active">For You</span>
     </div>
-    <div class="top-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
   </div>
-  <div class="nav">
-    <div class="nav-item active"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z"/></svg><span>Home</span></div>
-    <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Friends</span></div>
-    <div class="nav-item"><div class="nav-plus"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14"/></svg></div></div>
-    <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h8M8 14h5"/></svg><span>Inbox</span></div>
-    <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+
+  <div class="right">
+    <img class="avatar" id="avatar" src="https://picsum.photos/100">
+    <div class="action"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><div class="action-count" id="likes">8.3K</div></div>
+    <div class="action"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 0 0 1-.9-3.8 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><div class="action-count">34</div></div>
+  </div>
+
+  <div class="bottom">
+    <div class="username" id="user">@LOVIXX_MUSIC</div>
+    <div class="caption" id="cap">but i live like a millionaire</div>
   </div>
 </div>
+
 <script>
-const feed=document.getElementById('feed'),starter=document.getElementById('starter'),loading=document.getElementById('loading');
-let videos=[],currentIndex=0,isLoading=false;
+const videos = [
+  {url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', user:'@LOVIXX_MUSIC', cap:'but i live like a millionaire', likes:8334},
+  {url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', user:'@trending', cap:'Global trending #fyp', likes:15420},
+  {url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', user:'@viral', cap:'This is trending now', likes:22100},
+  {url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', user:'@foryou', cap:'POV you found it', likes:18750},
+  {url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', user:'@tiktok', cap:'Wait for it...', likes:31200}
+];
 
-async function fetchTrending(){
-  if(isLoading) return;
-  isLoading=true; loading.style.display='block';
-  try{
-    const url='https://www.tiktok.com/api/recommend/item_list/?aid=1988&app_name=tiktok_web&device_platform=web_pc&count=35&region=US';
-    const proxy='https://api.allorigins.win/raw?url=';
-    const res=await fetch(proxy+encodeURIComponent(url));
-    const data=await res.json();
-    if(data.itemList){
-      const newVideos=data.itemList.map(v=>({
-        id:v.id,
-        url:v.video?.playAddr,
-        author:'@'+(v.author?.uniqueId||'tiktok'),
-        avatar:v.author?.avatarThumb,
-        caption:v.desc||'',
-        likes:v.stats?.diggCount||0,
-        comments:v.stats?.commentCount||0,
-        shares:v.stats?.shareCount||0,
-        saves:v.stats?.collectCount||0,
-        music:v.music?.title||'original sound'
-      })).filter(v=>v.url);
-      videos.push(...newVideos);
-      renderVideos(newVideos);
-    }
-  }catch(e){
-    const fallback=[
-      {id:'1',url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',author:'@LOVIXX_MUSIC',avatar:'https://picsum.photos/100',caption:'but i live like a millionaire',likes:8334,comments:34,shares:271,saves:489,music:'Millionaire - LOVIXX'},
-      {id:'2',url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',author:'@trending',avatar:'https://picsum.photos/101',caption:'Global trending #fyp',likes:15420,comments:210,shares:543,saves:892,music:'original sound'},
-      {id:'3',url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',author:'@viral',avatar:'https://picsum.photos/102',caption:'This is trending now',likes:22100,comments:445,shares:1200,saves:2100,music:'Trending audio'}
-    ];
-    videos.push(...fallback);
-    renderVideos(fallback);
-  }
-  isLoading=false; loading.style.display='none';
-}
+let current = 0;
+let currentTab = 4;
+const feed = document.getElementById('feed');
+const debug = document.getElementById('debug');
 
-function renderVideos(list){
-  list.forEach((v,i)=>{
-    const idx=videos.length-list.length+i;
-    const wrap=document.createElement('div');
-    wrap.className='video-wrap'; wrap.dataset.index=idx;
-    wrap.innerHTML=`
-      <video src="${v.url}" loop playsinline preload="metadata" crossorigin="anonymous"></video>
-      <div class="right">
-        <div class="record"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2a10 10 0 0 1 10 10 0 0 1-10 10"/></svg></div>
-        <div class="avatar-wrap"><img class="avatar" src="${v.avatar}" alt=""><div class="follow"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14"/></svg></div></div>
-        <div class="action"><div class="action-btn"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div><div class="action-count">${format(v.likes)}</div></div>
-        <div class="action"><div class="action-btn"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 0 0 1-.9-3.8 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><div class="action-count">${format(v.comments)}</div></div>
-        <div class="action"><div class="action-btn"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div><div class="action-count">${format(v.saves)}</div></div>
-        <div class="action"><div class="action-btn"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></div><div class="action-count">${format(v.shares)}</div></div>
-      </div>
-      <div class="bottom">
-        <div class="username">${v.author}</div>
-        <div class="caption">${v.caption}</div>
-        <div class="music-row"><div class="music-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Spotify</div><div class="music-text">Contains: ${v.music}</div></div>
-      </div>`;
+function loadVideos() {
+  videos.forEach((v,i)=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'video-wrap';
+    wrap.id = 'v'+i;
+    wrap.innerHTML = `<video src="${v.url}" loop playsinline preload="auto"></video>`;
     feed.appendChild(wrap);
   });
+  showVideo(0);
 }
 
-function format(n){if(!n)return'0';return n>999999?Math.floor(n/1000000)+'M':n>999?Math.floor(n/1000)+'K':n.toString()}
-
-function playCurrent(){
-  document.querySelectorAll('video').forEach((v,i)=>{
-    if(i===currentIndex){v.muted=false;v.volume=1;v.currentTime=0;v.play().catch(()=>{});}
-    else{v.pause();}
-  });
-}
-
-const observer=new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{
-    if(e.isIntersecting){
-      currentIndex=parseInt(e.target.dataset.index);
-      playCurrent();
-      if(currentIndex>=videos.length-3) fetchTrending();
+function showVideo(idx) {
+  current = (idx + videos.length) % videos.length;
+  document.querySelectorAll('.video-wrap').forEach((w,i)=>{
+    w.classList.toggle('active', i===current);
+    const vid = w.querySelector('video');
+    if(i===current) {
+      vid.currentTime = 0;
+      vid.muted = false;
+      vid.volume = 1;
+      vid.play().then(()=>{
+        debug.textContent = `Playing ${current+1}/${videos.length} • Sound ON`;
+      }).catch(e=>{
+        debug.textContent = 'Tap again to enable sound';
+        vid.muted = true;
+        vid.play();
+      });
+      document.getElementById('user').textContent = videos[current].user;
+      document.getElementById('cap').textContent = videos[current].cap;
+      document.getElementById('likes').textContent = format(videos[current].likes);
+    } else {
+      vid.pause();
     }
   });
-},{threshold:0.7});
+}
 
-new MutationObserver(()=>{document.querySelectorAll('.video-wrap').forEach(el=>observer.observe(el));}).observe(feed,{childList:true});
+function format(n){ return n>999? (n/1000).toFixed(1)+'K' : n }
 
-starter.onclick=async()=>{starter.classList.add('hide');await fetchTrending();setTimeout(playCurrent,300);};
+function nextVideo(){ showVideo(current+1) }
+function prevVideo(){ showVideo(current-1) }
+
+function changeTab(dir){
+  const tabs = document.querySelectorAll('#tabs span');
+  currentTab = (currentTab + dir + tabs.length) % tabs.length;
+  tabs.forEach((t,i)=>t.classList.toggle('active', i===currentTab));
+  debug.textContent = `Tab: ${tabs[currentTab].textContent}`;
+  // In real app, you'd reload videos for this tab here
+}
+
+// D-pad navigation
+window.addEventListener('keydown', e=>{
+  if(e.key==='ArrowDown') nextVideo(); // down = next
+  if(e.key==='ArrowUp') prevVideo(); // up = previous
+  if(e.key==='ArrowRight') changeTab(1); // right = next tab
+  if(e.key==='ArrowLeft') changeTab(-1); // left = prev tab
+});
+
+// Touch swipe
+let startX=0, startY=0;
+document.addEventListener('touchstart', e=>{
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+}, {passive:true});
+
+document.addEventListener('touchend', e=>{
+  const dx = e.changedTouches[0].clientX - startX;
+  const dy = e.changedTouches[0].clientY - startY;
+
+  if(Math.abs(dx) > Math.abs(dy)) {
+    // Horizontal swipe
+    if(Math.abs(dx) > 50) {
+      if(dx > 0) changeTab(-1); // swipe right = left tab
+      else changeTab(1); // swipe left = right tab
+    }
+  } else {
+    // Vertical swipe - YOU REQUESTED: up=prev, down=next
+    if(Math.abs(dy) > 50) {
+      if(dy > 0) nextVideo(); // swipe down = next
+      else prevVideo(); // swipe up = previous
+    }
+  }
+}, {passive:true});
+
+// Start
+document.getElementById('starter').onclick = ()=>{
+  document.getElementById('starter').classList.add('hide');
+  loadVideos();
+};
 </script>
 </body>
 </html>
