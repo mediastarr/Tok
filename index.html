@@ -7,59 +7,132 @@
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{width:600px;height:600px;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,system-ui;overflow:hidden;user-select:none}
- .app{position:relative;width:100%;height:100%;background:#000}
+.app{position:relative;width:100%;height:100%;background:#000}
   video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
- .top{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:10;background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);font-size:14px}
- .time{opacity:.8}
- .right-bar{position:absolute;right:8px;bottom:120px;display:flex;flex-direction:column;gap:24px;z-index:10}
- .btn{width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
- .btn svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:1.75}
- .btn.liked svg{fill:#ff2d55;stroke:#ff2d55}
- .btn span{font-size:11px;opacity:.9}
- .bottom{position:absolute;left:0;right:70px;bottom:0;padding:16px;background:linear-gradient(0deg,rgba(0,0,0,.7),transparent);z-index:10}
- .user{font-weight:600;font-size:15px;margin-bottom:4px}
- .caption{font-size:14px;line-height:1.3;opacity:.95;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
- .music{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;opacity:.8}
- .music svg{width:12px;height:12px}
- .hint{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.5;transition:opacity.3s;z-index:10}
- .hint.hide{opacity:0}
- .debug{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.92);border-top:1px solid #222;padding:8px 12px;font:11px/1.3 ui-monospace;max-height:140px;overflow:auto;display:none;z-index:20}
- .debug.show{display:block}
- .debug-row{display:flex;justify-content:space-between;margin:1px 0}
- .debug-l{opacity:.5}.debug-v{color:#25f4ee}.debug-e{color:#ff3b30}
- .heart{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(0);pointer-events:none;z-index:15}
- .heart.show{animation:pop.6s ease-out forwards}
+.top{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:10;background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);font-size:14px}
+.time{opacity:.8}
+.right-bar{position:absolute;right:8px;bottom:120px;display:flex;flex-direction:column;gap:24px;z-index:10}
+.btn{width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.btn svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:1.75}
+.btn.liked svg{fill:#ff2d55;stroke:#ff2d55}
+.btn span{font-size:11px;opacity:.9}
+.bottom{position:absolute;left:0;right:70px;bottom:0;padding:16px;background:linear-gradient(0deg,rgba(0,0,0,.7),transparent);z-index:10}
+.user{font-weight:600;font-size:15px;margin-bottom:4px}
+.caption{font-size:14px;line-height:1.3;opacity:.95;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.music{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;opacity:.8}
+.music svg{width:12px;height:12px}
+.hint{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.5;transition:opacity.3s;z-index:10}
+.hint.hide{opacity:0}
+.debug{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.92);border-top:1px solid #222;padding:8px 12px;font:11px/1.3 ui-monospace;max-height:140px;overflow:auto;display:none;z-index:20}
+.debug.show{display:block}
+.debug-row{display:flex;justify-content:space-between;margin:1px 0}
+.debug-l{opacity:.5}.debug-v{color:#25f4ee}.debug-e{color:#ff3b30}
+.heart{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(0);pointer-events:none;z-index:15}
+.heart.show{animation:pop.6s ease-out forwards}
+.tap-start{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);z-index:30;flex-direction:column;gap:12px}
+.tap-start.hide{display:none}
+.tap-start div{font-size:18px}
+.tap-start span{font-size:13px;opacity:.7}
   @keyframes pop{0%{transform:translate(-50%,-50%) scale(0);opacity:0}50%{transform:translate(-50%,-50%) scale(1.3);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
 </style>
 </head>
 <body>
 <div class="app">
-  <video id="vid" playsinline muted loop></video>
+  <video id="vid" playsinline muted loop crossorigin="anonymous"></video>
+
+  <div class="tap-start" id="starter">
+    <div>Tap to start</div>
+    <span>Ray-Ban Display requires tap</span>
+  </div>
+
   <div class="top"><div>TikTok</div><div class="time" id="time">9:41</div></div>
   <div class="right-bar">
     <div class="btn" id="likeBtn"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span id="likeCount">127K</span></div>
-    <div class="btn"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span>2.4K</span></div>
+    <div class="btn"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span>2.4K</span></div>
     <div class="btn"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg><span>Share</span></div>
   </div>
   <div class="bottom"><div class="user" id="user">@alpine.hike</div><div class="caption" id="caption">Morning hike through the clouds ☁️ #nature</div><div class="music"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span id="music">original sound</span></div></div>
   <div class="hint" id="hint">Swipe ↑↓</div>
   <svg class="heart" id="heart" width="80" height="80" viewBox="0 0 24 24" fill="#ff2d55"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-  <div class="debug" id="debug"><div class="debug-row"><span class="debug-l">Queue:</span><span class="debug-v" id="d-queue">0</span></div><div class="debug-row"><span class="debug-l">Cached:</span><span class="debug-v" id="d-cache">0</span></div><div class="debug-row"><span class="debug-l">Network:</span><span class="debug-v" id="d-net">online</span></div><div class="debug-row"><span class="debug-l">Next preload:</span><span class="debug-v" id="d-pre">-</span></div><div class="debug-row"><span class="debug-l">Last:</span><span class="debug-e" id="d-err">none</span></div></div>
+  <div class="debug" id="debug"><div class="debug-row"><span class="debug-l">Status:</span><span class="debug-v" id="d-status">loading</span></div><div class="debug-row"><span class="debug-l">Cached:</span><span class="debug-v" id="d-cache">0</span></div><div class="debug-row"><span class="debug-l">Network:</span><span class="debug-v" id="d-net">online</span></div><div class="debug-row"><span class="debug-l">Error:</span><span class="debug-e" id="d-err">none</span></div></div>
 </div>
 <script type="module">
-import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@8/+esm';
-const videos=[{id:1,url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',user:'@alpine.hike',cap:'Morning hike through the clouds ☁️ #nature',music:'original sound',likes:127000},{id:2,url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',user:'@city.chef',cap:'3 ingredient pasta that slaps 🍝',music:'Spaghetti - Chef',likes:89200},{id:3,url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',user:'@tech.tips',cap:'Ray-Ban Display hack you need',music:'original',likes:54300},{id:4,url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',user:'@skate.daily',cap:'Downtown line clean',music:'skate vibes',likes:210000},{id:5,url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',user:'@maker.lab',cap:'Building in public day 47',music:'build log',likes:34000}];
-let idx=0,liked=new Set();const vid=document.getElementById('vid');const cacheName='tiktok-vids-v1';const dbp=openDB('herald-tiktok',1,{upgrade(db){db.createObjectStore('cache')}});
-async function loadVideo(i){idx=(i+videos.length)%videos.length;const v=videos[idx];document.getElementById('user').textContent=v.user;document.getElementById('caption').textContent=v.cap;document.getElementById('music').textContent=v.music;document.getElementById('likeCount').textContent=formatNum(v.likes+(liked.has(v.id)?1:0));document.getElementById('likeBtn').classList.toggle('liked',liked.has(v.id));const cache=await caches.open(cacheName);const cached=await cache.match(v.url);vid.src=cached?cached.url:v.url;vid.play().catch(()=>{});preloadNext();updateDebug()}
-async function preloadNext(){if(!navigator.onLine)return;const cache=await caches.open(cacheName);for(let i=1;i<=3;i++){const next=videos[(idx+i)%videos.length];if(!(await cache.match(next.url))){try{await cache.add(next.url);document.getElementById('d-pre').textContent=`+${i}`}catch(e){document.getElementById('d-err').textContent='preload fail'}}}}
+const videos=[
+  {id:1,url:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',user:'@alpine.hike',cap:'Morning hike through the clouds ☁️ #nature',music:'original sound',likes:127000},
+  {id:2,url:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm',user:'@city.chef',cap:'3 ingredient pasta that slaps 🍝',music:'Spaghetti - Chef',likes:89200},
+  {id:3,url:'https://www.w3schools.com/html/mov_bbb.mp4',user:'@tech.tips',cap:'Ray-Ban Display hack you need',music:'original',likes:54300},
+  {id:4,url:'https://www.w3schools.com/html/movie.mp4',user:'@skate.daily',cap:'Downtown line clean',music:'skate vibes',likes:210000},
+  {id:5,url:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',user:'@maker.lab',cap:'Building in public day 47',music:'build log',likes:34000}
+];
+let idx=0,liked=new Set(),started=false;
+const vid=document.getElementById('vid');
+const starter=document.getElementById('starter');
+const dStatus=document.getElementById('d-status');
+const dErr=document.getElementById('d-err');
+
+vid.muted=true; vid.playsInline=true;
+
+async function loadVideo(i){
+  idx=(i+videos.length)%videos.length;
+  const v=videos[idx];
+  document.getElementById('user').textContent=v.user;
+  document.getElementById('caption').textContent=v.cap;
+  document.getElementById('music').textContent=v.music;
+  document.getElementById('likeCount').textContent=formatNum(v.likes+(liked.has(v.id)?1:0));
+  document.getElementById('likeBtn').classList.toggle('liked',liked.has(v.id));
+
+  dStatus.textContent='loading...';
+  try{
+    vid.src=v.url;
+    await vid.load();
+    if(started){ await vid.play(); dStatus.textContent='playing'; }
+    else{ dStatus.textContent='tap to play'; }
+    dErr.textContent='none';
+  }catch(e){
+    dStatus.textContent='error';
+    dErr.textContent=e.message.substring(0,30);
+  }
+  updateDebug();
+}
+
 function formatNum(n){return n>=1000?(n/1000).toFixed(n%1000?1:0)+'K':n}
-function next(){loadVideo(idx+1);hideHint()}function prev(){loadVideo(idx-1);hideHint()}function toggleLike(){const v=videos[idx];if(liked.has(v.id)){liked.delete(v.id);v.likes--}else{liked.add(v.id);v.likes++;showHeart()}document.getElementById('likeCount').textContent=formatNum(v.likes);document.getElementById('likeBtn').classList.toggle('liked',liked.has(v.id))}
+function next(){loadVideo(idx+1);hideHint()}
+function prev(){loadVideo(idx-1);hideHint()}
+function toggleLike(){const v=videos[idx];if(liked.has(v.id)){liked.delete(v.id);v.likes--}else{liked.add(v.id);v.likes++;showHeart()}document.getElementById('likeCount').textContent=formatNum(v.likes);document.getElementById('likeBtn').classList.toggle('liked',liked.has(v.id))}
 function showHeart(){const h=document.getElementById('heart');h.classList.remove('show');void h.offsetWidth;h.classList.add('show')}
-let sy=0;vid.addEventListener('touchstart',e=>sy=e.touches[0].clientY,{passive:true});vid.addEventListener('touchend',e=>{const dy=e.changedTouches[0].clientY-sy;if(Math.abs(dy)>40){dy<0?next():prev()}},{passive:true});vid.addEventListener('click',()=>{vid.paused?vid.play():vid.pause()});vid.addEventListener('dblclick',toggleLike);document.getElementById('likeBtn').onclick=toggleLike;
-let taps=0,lastTap=0;vid.addEventListener('click',()=>{const now=Date.now();taps=now-lastTap<400?taps+1:1;lastTap=now;if(taps>=3){document.getElementById('debug').classList.toggle('show');updateDebug();taps=0}});
-async function updateDebug(){const cache=await caches.open(cacheName);const keys=await cache.keys();document.getElementById('d-cache').textContent=keys.length;document.getElementById('d-net').textContent=navigator.onLine?'online':'OFFLINE';document.getElementById('d-net').style.color=navigator.onLine?'#25f4ee':'#ff3b30';const db=await dbp;document.getElementById('d-queue').textContent=await db.count('cache')}
-function hideHint(){document.getElementById('hint').classList.add('hide')}setTimeout(hideHint,3000);setInterval(()=>document.getElementById('time').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),1000);
-loadVideo(0);window.addEventListener('online',preloadNext);setInterval(updateDebug,2000);window.addEventListener('keydown',e=>{if(e.key==='ArrowDown')next();if(e.key==='ArrowUp')prev();if(e.key==='l')toggleLike()});
+
+starter.onclick=async()=>{
+  started=true;
+  starter.classList.add('hide');
+  try{await vid.play();dStatus.textContent='playing'}catch(e){dErr.textContent=e.message}
+};
+
+let sy=0;
+vid.addEventListener('touchstart',e=>sy=e.touches[0].clientY,{passive:true});
+vid.addEventListener('touchend',e=>{const dy=e.changedTouches[0].clientY-sy;if(Math.abs(dy)>40){dy<0?next():prev()}},{passive:true});
+vid.addEventListener('click',()=>{if(!started){starter.click();return} vid.paused?vid.play():vid.pause()});
+vid.addEventListener('dblclick',toggleLike);
+vid.addEventListener('error',()=>{dErr.textContent='video load failed';dStatus.textContent='error'});
+document.getElementById('likeBtn').onclick=toggleLike;
+
+let taps=0,lastTap=0;
+vid.addEventListener('click',()=>{const now=Date.now();taps=now-lastTap<400?taps+1:1;lastTap=now;if(taps>=3){document.getElementById('debug').classList.toggle('show');taps=0}});
+
+async function updateDebug(){
+  document.getElementById('d-net').textContent=navigator.onLine?'online':'OFFLINE';
+  try{
+    const cache=await caches.open('tiktok-v1');
+    const keys=await cache.keys();
+    document.getElementById('d-cache').textContent=keys.length;
+  }catch{}
+}
+function hideHint(){document.getElementById('hint').classList.add('hide')}
+setTimeout(hideHint,3000);
+setInterval(()=>document.getElementById('time').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),1000);
+
+loadVideo(0);
+setInterval(updateDebug,2000);
+window.addEventListener('keydown',e=>{if(e.key==='ArrowDown')next();if(e.key==='ArrowUp')prev()});
 </script>
 </body>
 </html>
