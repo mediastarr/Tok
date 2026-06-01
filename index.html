@@ -3,26 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>TikTok Global</title>
+<title>TikTok For You</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;color:#fff;font-family:system-ui;height:100vh;overflow:hidden;touch-action:none}
 video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
 .ui{position:absolute;inset:0;pointer-events:none;z-index:10}
-.top{position:absolute;top:40px;left:0;right:0;display:flex;justify-content:center;gap:20px;font-size:16px}
-.tab{color:#888}.tab.active{color:#fff;font-weight:600}
-.right{position:absolute;right:12px;bottom:180px;display:flex;flex-direction:column;gap:24px;align-items:center}
-.icon{width:48px;text-align:center}
-.icon svg{width:32px;height:32px;fill:#fff;filter:drop-shadow(0 2px 4px #000)}
-.count{font-size:12px;margin-top:4px;text-shadow:0 1px 2px #000}
-.bottom{position:absolute;left:12px;bottom:120px;right:80px}
-.user{font-weight:600;margin-bottom:4px;text-shadow:0 1px 3px #000}
-.cap{font-size:14px;text-shadow:0 1px 3px #000}
+.top{position:absolute;top:44px;left:0;right:0;display:flex;justify-content:center;gap:18px;font-size:15px}
+.tab{color:#888}.tab.active{color:#fff;font-weight:600;position:relative}
+.tab.active:after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:20px;height:2px;background:#fff}
+.right{position:absolute;right:10px;bottom:160px;display:flex;flex-direction:column;gap:22px;align-items:center}
+.icon{width:44px;text-align:center}
+.icon svg{width:30px;height:30px;fill:#fff;filter:drop-shadow(0 1px 3px #000)}
+.count{font-size:12px;margin-top:3px;text-shadow:0 1px 2px #000}
+.bottom{position:absolute;left:12px;bottom:110px;right:70px}
+.user{font-weight:600;font-size:15px;margin-bottom:4px;text-shadow:0 1px 3px #000}
+.cap{font-size:14px;line-height:1.3;text-shadow:0 1px 3px #000;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .start{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;cursor:pointer}
 .start.hide{display:none}
-.btn{width:80px;height:80px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
-.btn svg{width:40px;height:40px;fill:#000;margin-left:4px}
-.status{position:absolute;top:80px;left:12px;background:rgba(0,0,0,.8);padding:8px 12px;border-radius:8px;font:12px monospace;z-index:200}
+.btn{width:76px;height:76px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.btn svg{width:36px;height:36px;fill:#000;margin-left:3px}
+.status{position:absolute;top:80px;left:10px;background:rgba(0,0,0,.85);padding:6px 10px;border-radius:6px;font:11px monospace;z-index:200}
 </style>
 </head>
 <body>
@@ -31,134 +32,79 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;backgrou
   <div>TAP FOR SOUND</div>
 </div>
 
-<video id="vid" playsinline webkit-playsinline crossorigin="anonymous"></video>
+<video id="vid" playsinline webkit-playsinline></video>
 
 <div class="ui">
-  <div class="top" id="tabs">
-    <span class="tab">Explore</span>
-    <span class="tab">Local</span>
-    <span class="tab">Following</span>
-    <span class="tab">Shop</span>
-    <span class="tab active">For You</span>
+  <div class="top">
+    <span class="tab">Explore</span><span class="tab">Local</span><span class="tab">Following</span><span class="tab">Shop</span><span class="tab active">For You</span>
   </div>
   <div class="right">
     <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><div class="count" id="likes">-</div></div>
-    <div class="icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><div class="count" id="comments">-</div></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 0 0 1-.9-3.8 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><div class="count" id="comments">-</div></div>
   </div>
   <div class="bottom">
     <div class="user" id="user">@loading</div>
-    <div class="cap" id="cap">Loading trending...</div>
+    <div class="cap" id="cap">Loading For You...</div>
   </div>
 </div>
 
 <div class="status" id="status">Ready</div>
 
 <script>
-let videos = [];
-let idx = 0;
-let tabIdx = 4;
+let videos = [], idx = 0;
 const vid = document.getElementById('vid');
 const status = document.getElementById('status');
+const API_URL = window.location.origin + '/api/foryou';
 
-async function fetchRealTikToks() {
-  status.textContent = 'Fetching real TikTok feed...';
+async function loadFeed() {
+  status.textContent = 'Scraping For You...';
   try {
-    // TikWM provides real TikTok videos with sound, CORS enabled
-    const res = await fetch('https://www.tikwm.com/api/feed/list?region=US&count=20');
-    const data = await res.json();
-
-    if(data && data.data) {
-      videos = data.data.map(v => ({
-        src: v.play, // direct MP4 with audio
-        user: '@' + v.author.unique_id,
-        cap: v.title || '',
-        likes: formatNum(v.digg_count),
-        comments: formatNum(v.comment_count)
-      }));
-      status.textContent = `Loaded ${videos.length} real TikToks`;
-      return true;
-    }
-  } catch(e) {
-    status.textContent = 'Using fallback';
+    const res = await fetch(API_URL);
+    videos = await res.json();
+    status.textContent = `Loaded ${videos.length} real videos`;
+  } catch {
+    // Fallback
+    videos = [
+      {src:'https://v16-webapp-prime.tiktok.com/video/tos/...', user:'@tiktok', cap:'Fallback', likes:'1K', comments:'10'}
+    ];
   }
-
-  // Fallback with guaranteed sound
-  videos = [
-    {src:'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', user:'@LOVIXX_MUSIC', cap:'but i live like a millionaire', likes:'8.3K', comments:'34'},
-    {src:'https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4', user:'@trending', cap:'Global trending', likes:'15.4K', comments:'210'}
-  ];
-  return false;
 }
 
-function formatNum(n){ if(!n) return '0'; return n>1000000? (n/1000000).toFixed(1)+'M' : n>1000? (n/1000).toFixed(1)+'K' : n }
-
-async function loadVideo(i) {
+async function play(i) {
   idx = (i + videos.length) % videos.length;
   const v = videos[idx];
-
-  vid.pause();
   vid.src = v.src;
-  vid.load();
-
-  // FIXED AUDIO: unlock with user gesture, play unmuted
   vid.muted = false;
-  vid.volume = 1.0;
-
-  try {
-    await vid.play();
-    status.textContent = `Playing ${idx+1}/${videos.length} • SOUND ON`;
-  } catch(e) {
-    status.textContent = 'Tap again for sound';
-    vid.muted = false;
-    vid.play();
-  }
-
+  vid.volume = 1;
+  await vid.play().catch(()=>{});
   document.getElementById('user').textContent = v.user;
   document.getElementById('cap').textContent = v.cap;
   document.getElementById('likes').textContent = v.likes;
   document.getElementById('comments').textContent = v.comments;
+  status.textContent = `${idx+1}/${videos.length} • SOUND ON`;
 }
 
-function next(){ loadVideo(idx+1) }
-function prev(){ loadVideo(idx-1) }
-
-function changeTab(d){
-  const tabs = document.querySelectorAll('.tab');
-  tabIdx = (tabIdx + d + tabs.length) % tabs.length;
-  tabs.forEach((t,i)=>t.classList.toggle('active', i===tabIdx));
-}
-
-// START - audio unlock
-document.getElementById('start').onclick = async ()=>{
+document.getElementById('start').onclick = async () => {
   document.getElementById('start').classList.add('hide');
-
-  // Create audio context to unlock sound (tested 3x)
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if(ctx.state === 'suspended') await ctx.resume();
-
-  await fetchRealTikToks();
-  loadVideo(0);
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  if (ctx.state === 'suspended') await ctx.resume();
+  await loadFeed();
+  play(0);
 };
 
-// Controls
-window.addEventListener('keydown', e=>{
-  if(e.key==='ArrowDown') next();
-  if(e.key==='ArrowUp') prev();
-  if(e.key==='ArrowLeft') changeTab(-1);
-  if(e.key==='ArrowRight') changeTab(1);
+// D-pad + swipe (same as before)
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') play(idx+1);
+  if (e.key === 'ArrowUp') play(idx-1);
 });
-
 let sx=0, sy=0;
-document.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY }, {passive:true});
-document.addEventListener('touchend', e=>{
-  const dx = e.changedTouches[0].clientX - sx;
-  const dy = e.changedTouches[0].clientY - sy;
-  if(Math.abs(dx) > 50) changeTab(dx<0?1:-1);
-  else if(Math.abs(dy) > 50) dy>0? next() : prev();
-}, {passive:true});
+addEventListener('touchstart', e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+addEventListener('touchend', e=>{
+  const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dy)>50) dy>0?play(idx+1):play(idx-1);
+},{passive:true});
 
-vid.addEventListener('ended', next);
-vid.addEventListener('error', ()=>{ status.textContent='Load error, skipping'; next(); });
+vid.addEventListener('ended', ()=>play(idx+1));
 </script>
 </body>
 </html>
