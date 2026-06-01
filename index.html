@@ -45,27 +45,55 @@ const tabs=document.querySelectorAll('.tab');
 
 async function loadBatch(){
   if(loading) return; loading=true;
-  const res=await fetch('https://www.tikwm.com/api/feed/list?region=US&count=15&_='+Date.now());
+  const res=await fetch('https://www.tikwm.com/api/feed/list?region=US&count=8&_='+Date.now());
   const data=await res.json();
-  const feed=document.getElementById('feed');
-
-  data.data.forEach(v=>{
-    if(vids.find(x=>x.video_id===v.video_id)) return;
-    vids.push(v);
-    const div=document.createElement('div');
-    div.className='reel';
-    div.innerHTML=`<iframe src="https://www.tiktok.com/embed/v2/${v.video_id}?autoplay=1&muted=0" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>`;
-    feed.appendChild(div);
-  });
+  data.data.forEach(v=>{ if(!vids.find(x=>x.video_id===v.video_id)) vids.push(v); });
   loading=false;
 }
 
-function show(i){
+function createVideo(i){
+  const reel=document.createElement('div');
+  reel.className='reel';
+  reel.dataset.index=i;
+  const video=document.createElement('video');
+  video.playsInline=true;
+  video.preload='auto';
+  video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
+  // Don't set src yet - lazy load
+  reel.appendChild(video);
+  document.getElementById('feed').appendChild(reel);
+  return {reel, video};
+}
+
+async function show(i){
   if(i>=vids.length-2) loadBatch();
   idx=(i+vids.length)%vids.length;
-  document.querySelectorAll('.reel').forEach((r,n)=>r.classList.toggle('active',n===idx));
-  document.getElementById('user').textContent='@'+vids[idx].author.unique_id;
-  document.getElementById('cap').textContent=vids[idx].title;
+
+  // Create reels if needed
+  while(document.querySelectorAll('.reel').length <= idx+1) {
+    createVideo(document.querySelectorAll('.reel').length);
+  }
+
+  document.querySelectorAll('.reel').forEach((r,n)=>{
+    const isActive=n===idx;
+    r.classList.toggle('active',isActive);
+    const vid=r.querySelector('video');
+
+    if(isActive){
+      // Lazy load src only when needed
+      if(!vid.src) vid.src=vids[n].play;
+      vid.muted=false;
+      vid.volume=1;
+      vid.currentTime=0;
+      vid.play().catch(()=>{});
+      document.getElementById('user').textContent='@'+vids[n].author.unique_id;
+      document.getElementById('cap').textContent=vids[n].title;
+    } else {
+      vid.pause();
+      vid.removeAttribute('src'); // free memory
+      vid.load();
+    }
+  });
 }
 
 function changeTab(d){tab=(tab+d+5)%5;tabs.forEach((t,i)=>t.classList.toggle('active',i===tab));}
@@ -73,13 +101,16 @@ function changeTab(d){tab=(tab+d+5)%5;tabs.forEach((t,i)=>t.classList.toggle('ac
 document.getElementById('start').onclick=async()=>{
   document.getElementById('start').style.display='none';
   await loadBatch();
-  show(0);
-  // Force audio unlock
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  if(ctx.state==='suspended') await ctx.resume();
+  // Pre-create first 3 reels
+  for(let i=0;i<3;i++) createVideo(i);
+  await show(0);
+  // Unlock audio properly
+  const firstVid=document.querySelector('.reel.active video');
+  firstVid.muted=false;
+  await firstVid.play();
 };
 
-// SWIPES WORK NOW
+// SWIPES
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
 addEventListener('touchend',e=>{
@@ -91,8 +122,6 @@ addEventListener('touchend',e=>{
 addEventListener('keydown',e=>{
   if(e.key==='ArrowDown')show(idx+1);
   if(e.key==='ArrowUp')show(idx-1);
-  if(e.key==='ArrowRight')changeTab(1);
-  if(e.key==='ArrowLeft')changeTab(-1);
 });
 </script>
 <script async src="https://www.tiktok.com/embed.js"></script>
