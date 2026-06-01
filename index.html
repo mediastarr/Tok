@@ -6,69 +6,131 @@
 <title>TikTok</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:system-ui;height:100vh;overflow:hidden}
-.feed{position:relative;width:100%;height:100%}
-.reel{position:absolute;inset:0;display:none}
-.reel.active{display:block}
-iframe{width:100%;height:100%;border:0;background:#000}
+body{background:#000;color:#fff;font-family:system-ui;height:100vh;overflow:hidden;touch-action:none}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;display:none}
+video.active{display:block}
 .ui{position:absolute;inset:0;pointer-events:none;z-index:10}
-.top{position:absolute;top:44px;width:100%;text-align:center;font-size:15px;color:#fff;text-shadow:0 1px 3px #000}
+.top{position:absolute;top:44px;left:0;right:0;display:flex;justify-content:center;gap:18px;font-size:15px}
+.tab{color:#888;transition:.2s}.tab.active{color:#fff;font-weight:600}
+.right{position:absolute;right:12px;bottom:170px;text-align:center}
+.count{font-size:12px;margin-top:4px;text-shadow:0 1px 2px #000}
+.bottom{position:absolute;left:12px;bottom:110px;right:70px}
+.user{font-weight:600;text-shadow:0 1px 3px #000}
+.cap{font-size:14px;margin-top:3px;text-shadow:0 1px 3px #000}
 .start{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;cursor:pointer}
-.btn{width:80px;height:80px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.btn{width:80px;height:80px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
 .btn svg{width:36px;height:36px;fill:#000;margin-left:3px}
 </style>
 </head>
 <body>
 <div class="start" id="start">
   <div class="btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
-  <div>TAP TO LOAD REELS</div>
+  <div>TAP FOR SOUND</div>
 </div>
 
-<div class="feed" id="feed"></div>
-<div class="ui"><div class="top">For You • Swipe up/down</div></div>
+<div id="videos"></div>
+
+<div class="ui">
+  <div class="top" id="tabs">
+    <span class="tab">Explore</span>
+    <span class="tab">Local</span>
+    <span class="tab">Following</span>
+    <span class="tab">Shop</span>
+    <span class="tab active">For You</span>
+  </div>
+  <div class="right">
+    <svg width="28" height="28" fill="#fff" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    <div class="count" id="likes">-</div>
+  </div>
+  <div class="bottom">
+    <div class="user" id="user">@loading</div>
+    <div class="cap" id="cap">Loading...</div>
+  </div>
+</div>
 
 <script>
-let videos = [], current = 0;
+let vids = [], idx = 0, tab = 4;
+const tabs = document.querySelectorAll('.tab');
 
-async function loadReels() {
+async function init() {
   const res = await fetch('https://www.tikwm.com/api/feed/list?region=US&count=20');
   const data = await res.json();
-  videos = data.data;
+  vids = data.data;
 
-  const feed = document.getElementById('feed');
-  videos.forEach((v, i) => {
-    const div = document.createElement('div');
-    div.className = 'reel' + (i === 0? ' active' : '');
-    div.innerHTML = `<iframe src="https://www.tiktok.com/embed/v2/${v.video_id}?lang=en&autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-    feed.appendChild(div);
+  const container = document.getElementById('videos');
+  vids.forEach((v, i) => {
+    const video = document.createElement('video');
+    video.src = v.play; // direct MP4 with sound
+    video.playsInline = true;
+    video.loop = true;
+    video.preload = 'auto';
+    if (i === 0) video.className = 'active';
+    container.appendChild(video);
   });
+  updateInfo(0);
 }
 
-function show(idx) {
-  current = (idx + videos.length) % videos.length;
-  document.querySelectorAll('.reel').forEach((r, i) => {
-    r.classList.toggle('active', i === current);
+function play(i) {
+  idx = (i + vids.length) % vids.length;
+  document.querySelectorAll('video').forEach((v, n) => {
+    v.classList.toggle('active', n === idx);
+    if (n === idx) {
+      v.muted = false;
+      v.currentTime = 0;
+      v.play().catch(()=>{});
+    } else {
+      v.pause();
+    }
   });
+  updateInfo(idx);
 }
 
+function updateInfo(i) {
+  document.getElementById('user').textContent = '@' + vids[i].author.unique_id;
+  document.getElementById('cap').textContent = vids[i].title;
+  document.getElementById('likes').textContent = format(vids[i].digg_count);
+}
+
+function format(n){ return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'K':n }
+
+function changeTab(d) {
+  tab = (tab + d + 5) % 5;
+  tabs.forEach((t,i)=>t.classList.toggle('active', i===tab));
+}
+
+// START
 document.getElementById('start').onclick = async () => {
   document.getElementById('start').style.display = 'none';
-  await loadReels();
+  await init();
+  const first = document.querySelector('video');
+  first.muted = false;
+  await first.play();
 };
 
-// Swipe and D-pad
-window.addEventListener('keydown', e => {
-  if (e.key === 'ArrowDown') show(current + 1);
-  if (e.key === 'ArrowUp') show(current - 1);
-});
-
-let sy = 0;
-addEventListener('touchstart', e => sy = e.touches[0].clientY, {passive:true});
+// SWIPE - FIXED DIRECTIONS
+let sx=0, sy=0;
+addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY }, {passive:true});
 addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - sx;
   const dy = e.changedTouches[0].clientY - sy;
-  if (Math.abs(dy) > 50) dy > 0? show(current + 1) : show(current - 1);
+
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    // LEFT/RIGHT = tabs
+    changeTab(dx < 0? 1 : -1);
+  } else if (Math.abs(dy) > 40) {
+    // UP = previous, DOWN = next (as you requested)
+    if (dy < -40) play(idx - 1); // swipe up
+    if (dy > 40) play(idx + 1); // swipe down
+  }
 }, {passive:true});
+
+// D-PAD
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') play(idx + 1);
+  if (e.key === 'ArrowUp') play(idx - 1);
+  if (e.key === 'ArrowRight') changeTab(1);
+  if (e.key === 'ArrowLeft') changeTab(-1);
+});
 </script>
-<script async src="https://www.tiktok.com/embed.js"></script>
 </body>
 </html>
