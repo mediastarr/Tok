@@ -1,78 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>TikTok</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:system-ui;height:100vh;overflow:hidden;touch-action:none}
-.reel{position:absolute;inset:0;display:none;background:#000}
-.reel.active{display:block}
-.reel iframe{width:100%;height:100%;border:0;pointer-events:none} /* FIX: lets swipes work */
-.ui{position:absolute;inset:0;z-index:10;pointer-events:none}
-.top{position:absolute;top:44px;left:0;right:0;display:flex;justify-content:center;gap:18px;font-size:15px}
-.tab{color:#888}.tab.active{color:#fff;font-weight:600}
-.bottom{position:absolute;left:12px;bottom:110px;right:12px}
-.user{font-weight:600;text-shadow:0 1px 3px #000}
-.cap{font-size:14px;margin-top:3px;text-shadow:0 1px 3px #000}
-.start{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;cursor:pointer}
-.btn{width:80px;height:80px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
-.btn svg{width:36px;height:36px;fill:#000;margin-left:3px}
-</style>
-</head>
-<body>
-<div class="start" id="start">
-  <div class="btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
-  <div>TAP TO START</div>
-</div>
-
-<div id="feed"></div>
-
-<div class="ui">
-  <div class="top">
-    <span class="tab">Explore</span><span class="tab">Local</span><span class="tab">Following</span><span class="tab">Shop</span><span class="tab active">For You</span>
-  </div>
-  <div class="bottom">
-    <div class="user" id="user">@tiktok</div>
-    <div class="cap" id="cap">Loading...</div>
-  </div>
-</div>
-
 <script>
 let vids=[], idx=0, tab=4, loading=false;
 const tabs=document.querySelectorAll('.tab');
 
 async function loadBatch(){
   if(loading) return; loading=true;
-  const res=await fetch('https://www.tikwm.com/api/feed/list?region=US&count=8&_='+Date.now());
-  const data=await res.json();
-  data.data.forEach(v=>{ if(!vids.find(x=>x.video_id===v.video_id)) vids.push(v); });
+  try{
+    // Force US region + English only
+    const res=await fetch('https://www.tikwm.com/api/feed/list?region=US&count=10&language=en&_='+Date.now());
+    const data=await res.json();
+    const container=document.getElementById('feed');
+
+    for(const v of data.data){
+      // Skip if not US or already exists
+      if(v.region!=='US' && v.author?.region!=='US') continue;
+      if(vids.find(x=>x.video_id===v.video_id)) continue;
+
+      vids.push(v);
+      const reel=document.createElement('div');
+      reel.className='reel';
+      reel.dataset.index=vids.length-1;
+
+      const video=document.createElement('video');
+      video.playsInline=true;
+      video.preload='none'; // lazy load
+      video.style.cssText='width:100%;height:100%;object-fit:cover;background:#000';
+
+      // Auto-skip broken videos
+      video.addEventListener('error',()=>{
+        console.log('Broken video, skipping');
+        if(reel.classList.contains('active')) show(idx+1);
+      });
+      video.addEventListener('ended',()=>{ video.currentTime=0; video.play().catch(()=>{}); });
+      video.addEventListener('stalled',()=>video.load());
+
+      reel.appendChild(video);
+      container.appendChild(reel);
+    }
+  }catch(e){console.log('Load failed',e)}
   loading=false;
 }
 
-function createVideo(i){
-  const reel=document.createElement('div');
-  reel.className='reel';
-  reel.dataset.index=i;
-  const video=document.createElement('video');
-  video.playsInline=true;
-  video.preload='auto';
-  video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
-  // Don't set src yet - lazy load
-  reel.appendChild(video);
-  document.getElementById('feed').appendChild(reel);
-  return {reel, video};
-}
-
 async function show(i){
-  if(i>=vids.length-2) loadBatch();
-  idx=(i+vids.length)%vids.length;
-
-  // Create reels if needed
-  while(document.querySelectorAll('.reel').length <= idx+1) {
-    createVideo(document.querySelectorAll('.reel').length);
+  // FIX: Don't loop back, load more instead
+  if(i>=vids.length){
+    await loadBatch();
+    // If still no new videos, stay on last one
+    if(i>=vids.length) i=vids.length-1;
   }
+  if(i<0) i=0;
+
+  idx=i;
+  const reels=document.querySelectorAll('.reel');
+
+  // Create reel if missing
+  if(!reels[idx]) await loadBatch();
 
   document.querySelectorAll('.reel').forEach((r,n)=>{
     const isActive=n===idx;
@@ -80,17 +61,25 @@ async function show(i){
     const vid=r.querySelector('video');
 
     if(isActive){
-      // Lazy load src only when needed
+      // Lazy load + play with sound
       if(!vid.src) vid.src=vids[n].play;
       vid.muted=false;
       vid.volume=1;
-      vid.currentTime=0;
-      vid.play().catch(()=>{});
+      vid.play().catch(()=>{
+        // If autoplay blocked, show next
+        setTimeout(()=>show(idx+1),500);
+      });
       document.getElementById('user').textContent='@'+vids[n].author.unique_id;
-      document.getElementById('cap').textContent=vids[n].title;
-    } else {
+      document.getElementById('cap').textContent=vids[n].title||'';
+
+      // Preload next 2
+      if(n+1<vids.length) document.querySelectorAll('.reel')[n+1]?.querySelector('video').load();
+      if(n+2<vids.length) document.querySelectorAll('.reel')[n+2]?.querySelector('video').load();
+      // Auto-load more when 2 from end
+      if(n>=vids.length-2) loadBatch();
+    }else{
       vid.pause();
-      vid.removeAttribute('src'); // free memory
+      vid.removeAttribute('src');
       vid.load();
     }
   });
@@ -101,16 +90,15 @@ function changeTab(d){tab=(tab+d+5)%5;tabs.forEach((t,i)=>t.classList.toggle('ac
 document.getElementById('start').onclick=async()=>{
   document.getElementById('start').style.display='none';
   await loadBatch();
-  // Pre-create first 3 reels
-  for(let i=0;i<3;i++) createVideo(i);
   await show(0);
-  // Unlock audio properly
   const firstVid=document.querySelector('.reel.active video');
-  firstVid.muted=false;
-  await firstVid.play();
+  if(firstVid){
+    firstVid.muted=false;
+    try{await firstVid.play()}catch{}
+  }
 };
 
-// SWIPES
+// SWIPES - no loop back
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
 addEventListener('touchend',e=>{
@@ -124,6 +112,3 @@ addEventListener('keydown',e=>{
   if(e.key==='ArrowUp')show(idx-1);
 });
 </script>
-<script async src="https://www.tiktok.com/embed.js"></script>
-</body>
-</html>
