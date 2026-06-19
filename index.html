@@ -213,12 +213,17 @@ function cleanBlobs(){
 }
 
 // ===== LOAD BATCH (SociaVault via Cloudflare Worker) =====
+const TAGS=['fyp','foryou','comedy','dance','storytime','lifehacks','funny','viral'];
+let tagPos=0;
+
 async function loadBatch(){
   if(loading){loadPending=true;return 0;}
   loading=true;
   let totalAdded=0;
   try{
-    const res=await fetch(PROXY+'/');
+    const tag=TAGS[tagPos%TAGS.length];
+    tagPos++;
+    const res=await fetch(PROXY+'/?tag='+encodeURIComponent(tag));
     const data=await res.json();
     const feed=document.getElementById('feed');
     const items=Object.values(data?.data?.aweme_list||{});
