@@ -9,41 +9,37 @@
 html,body{width:100%;height:100%;overflow:hidden;background:#000}
 body{color:#fff;font-family:-apple-system,system-ui,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none}
 
-/* Stage — centers the card + menu stack */
 .stage{
   position:fixed;inset:0;
   display:flex;flex-direction:column;
   align-items:center;justify-content:center;
-  gap:10px;
+  gap:8px;
 }
 
-/* Video card */
+/* Card sized by HEIGHT so it never overflows viewport */
 .card{
-  width:58%;
+  height:82vh;
   aspect-ratio:9/16;
   border-radius:14px;
   overflow:hidden;
   position:relative;
-  transition:width .2s ease;
+  transition:height .2s ease;
   flex-shrink:0;
   background:#000;
+  cursor:pointer;
 }
-body.menu-active .card{width:40%}
-.card.selected{
-  box-shadow:0 0 0 3px rgba(255,255,255,.8);
-}
+body.menu-active .card{height:48vh}
+.card.selected{box-shadow:0 0 0 3px rgba(255,255,255,.8)}
 
-/* Feed + Reels inside card */
 #feed{position:absolute;inset:0}
 .reel{position:absolute;inset:0;display:none;background:#000}
 .reel.active{display:block}
 .reel video{width:100%;height:100%;object-fit:cover}
 
-/* Play overlay (menu mode only) */
+/* Play overlay — menu mode only */
 .play-overlay{
   position:absolute;inset:0;
-  display:none;
-  align-items:center;justify-content:center;
+  display:none;align-items:center;justify-content:center;
   background:rgba(0,0,0,.3);
   pointer-events:none;z-index:5;
 }
@@ -59,32 +55,24 @@ body.menu-active .play-overlay{display:flex}
 /* Menu info */
 .menu-info{
   display:none;
-  width:40%;
   flex-direction:column;
-  padding:0 2px;
+  align-items:flex-start;
+  width:auto;
+  max-width:80%;
+  padding:0 4px;
 }
 body.menu-active .menu-info{display:flex}
-.menu-user-row{
-  font-size:12px;font-weight:600;
-  display:flex;align-items:center;gap:5px;
-}
-.menu-avatar{
-  width:20px;height:20px;border-radius:50%;
-  background:#444;border:1px solid #666;
-  overflow:hidden;flex-shrink:0;
-}
+.menu-user-row{font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.menu-avatar{width:22px;height:22px;border-radius:50%;background:#444;border:1px solid #666;overflow:hidden;flex-shrink:0}
 .menu-avatar img{width:100%;height:100%;object-fit:cover}
-.menu-cap{
-  font-size:11px;color:#ccc;margin-top:2px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
+.menu-cap{font-size:12px;color:#ccc;margin-top:2px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Action bar */
 .menu-actions{
   display:none;
   gap:18px;
-  padding:10px 22px;
-  background:rgba(50,50,50,.75);
+  padding:10px 24px;
+  background:rgba(50,50,50,.8);
   border-radius:40px;
 }
 body.menu-active .menu-actions{display:flex}
@@ -98,10 +86,9 @@ body.menu-active .menu-actions{display:flex}
 .action-btn.liked svg{fill:#fe2c55;opacity:1}
 .action-btn.saved svg{fill:#ffe135;opacity:1}
 
-/* Toast */
 .toast{
-  position:fixed;bottom:40px;left:50%;transform:translateX(-50%);
-  background:rgba(60,60,60,.8);color:#fff;
+  position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+  background:rgba(60,60,60,.85);color:#fff;
   padding:7px 16px;border-radius:20px;font-size:12px;
   opacity:0;transition:opacity .3s;pointer-events:none;z-index:200;
 }
@@ -151,10 +138,10 @@ let cursor=0;
 const seenIds=new Set();
 const likedIds=new Set();
 const savedIds=new Set();
-let stallTimer=null, skipCount=0;
-const MAX_SKIPS=5, STALL_MS=15000;
+let skipCount=0;
+const MAX_SKIPS=5;
 let loadPending=false;
-let userTouched=false; // track first gesture for unmute
+let userTouched=false;
 
 const card=document.getElementById('card');
 const toastEl=document.getElementById('toast');
@@ -174,13 +161,12 @@ function toast(msg){
 
 // ===== OPEN MENU =====
 function openMenu(){
-  if(!vids[idx]) return;
+  if(!vids[idx]||menuOpen) return;
   menuOpen=true;
   videoSelected=false;
-  clearStall();
   card.classList.remove('selected');
 
-  // Pause
+  // Pause video
   const v=document.querySelector('.reel.active video');
   if(v) v.pause();
 
@@ -190,7 +176,6 @@ function openMenu(){
   document.getElementById('menuCap').textContent=d.title||'';
   const av=document.getElementById('menuAvatar');
   av.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'';
-
   btnLike.classList.toggle('liked',likedIds.has(d.video_id));
   btnSave.classList.toggle('saved',savedIds.has(d.video_id));
 
@@ -199,23 +184,34 @@ function openMenu(){
 
 // ===== CLOSE MENU =====
 function closeMenu(){
+  if(!menuOpen) return;
   menuOpen=false;
   videoSelected=false;
   document.body.classList.remove('menu-active');
   card.classList.remove('selected');
 
-  // Resume
+  // Resume video
   const v=document.querySelector('.reel.active video');
-  if(v){ v.muted=false; v.volume=1; v.play().catch(()=>{}); }
+  if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}
 }
+
+// ===== TAP ON CARD — uses click event, reliable on Neural Band =====
+card.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  if(!menuOpen){
+    openMenu();
+  }else if(videoSelected){
+    closeMenu();
+  }
+});
 
 // ===== BUTTON HANDLERS =====
 btnLike.addEventListener('click',(e)=>{
   e.stopPropagation();
   if(!vids[idx]) return;
   const id=vids[idx].video_id;
-  if(likedIds.has(id)){ likedIds.delete(id); btnLike.classList.remove('liked'); toast('Removed like'); }
-  else{ likedIds.add(id); btnLike.classList.add('liked'); toast('Liked!'); }
+  if(likedIds.has(id)){likedIds.delete(id);btnLike.classList.remove('liked');toast('Removed like');}
+  else{likedIds.add(id);btnLike.classList.add('liked');toast('Liked!');}
 });
 
 btnShare.addEventListener('click',(e)=>{
@@ -236,8 +232,8 @@ btnSave.addEventListener('click',(e)=>{
   e.stopPropagation();
   if(!vids[idx]) return;
   const id=vids[idx].video_id;
-  if(savedIds.has(id)){ savedIds.delete(id); btnSave.classList.remove('saved'); toast('Unsaved'); }
-  else{ savedIds.add(id); btnSave.classList.add('saved'); toast('Saved!'); }
+  if(savedIds.has(id)){savedIds.delete(id);btnSave.classList.remove('saved');toast('Unsaved');}
+  else{savedIds.add(id);btnSave.classList.add('saved');toast('Saved!');}
 });
 
 btnMore.addEventListener('click',(e)=>{
@@ -246,10 +242,6 @@ btnMore.addEventListener('click',(e)=>{
   const d=vids[idx];
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id,'_blank');
 });
-
-// ===== STALL =====
-function clearStall(){if(stallTimer){clearTimeout(stallTimer);stallTimer=null;}}
-function startStall(){clearStall();stallTimer=setTimeout(()=>show(idx+1),STALL_MS);}
 
 // ===== LOAD BATCH =====
 async function loadBatch(){
@@ -277,8 +269,9 @@ async function loadBatch(){
         video.preload='none';
         video.muted=true;
         video.setAttribute('webkit-playsinline','true');
+        // Only skip on genuinely broken videos
         video.addEventListener('error',()=>{if(reel.classList.contains('active'))show(idx+1);});
-        video.addEventListener('playing',()=>{if(reel.classList.contains('active')){clearStall();skipCount=0;}});
+        video.addEventListener('playing',()=>{if(reel.classList.contains('active'))skipCount=0;});
         video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
         reel.appendChild(video);
         feed.appendChild(reel);
@@ -293,7 +286,7 @@ async function loadBatch(){
   return totalAdded;
 }
 
-// ===== PRELOAD =====
+// ===== PRELOAD next 3 =====
 function preloadAhead(){
   const reels=document.querySelectorAll('.reel');
   for(let o=1;o<=3;o++){
@@ -305,9 +298,8 @@ function preloadAhead(){
   }
 }
 
-// ===== SHOW =====
+// ===== SHOW VIDEO =====
 async function show(i){
-  clearStall();
   skipCount++;
   if(skipCount>MAX_SKIPS){skipCount=0;await new Promise(r=>setTimeout(r,500));await loadBatch();}
   if(i>=vids.length){await loadBatch();if(i>=vids.length)i=vids.length-1;}
@@ -320,12 +312,15 @@ async function show(i){
     const vid=r.querySelector('video');
     if(isActive){
       if(!vid.src) vid.src=vids[n].play;
-      // Try unmuted, fall back to muted if autoplay blocked
-      vid.muted=!userTouched;
-      vid.volume=1;
-      startStall();
+      // Start muted so autoplay works, unmute if user has interacted
+      if(userTouched){
+        vid.muted=false;
+        vid.volume=1;
+      }else{
+        vid.muted=true;
+      }
       vid.play().catch(()=>{
-        // Autoplay blocked — try muted, don't skip
+        // If unmuted play fails, try muted — don't skip
         vid.muted=true;
         vid.play().catch(()=>{});
       });
@@ -338,49 +333,35 @@ async function show(i){
   });
 }
 
-// ===== AUTO-PLAY =====
+// ===== AUTO-PLAY ON LOAD =====
 (async()=>{await loadBatch();await show(0);})();
 
-// ===== ALL TOUCH HANDLING IN ONE PLACE =====
+// ===== SWIPE GESTURES (touch handler — swipes ONLY, no tap logic) =====
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{
   sx=e.touches[0].clientX;
   sy=e.touches[0].clientY;
 
-  // First touch → unmute
+  // First touch → unmute current video + re-play to satisfy autoplay policy
   if(!userTouched){
     userTouched=true;
     const v=document.querySelector('.reel.active video');
-    if(v){v.muted=false;v.volume=1;}
+    if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}
   }
 },{passive:true});
 
 addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-sx;
   const dy=e.changedTouches[0].clientY-sy;
-  const isTap=Math.abs(dx)<35&&Math.abs(dy)<35;
-  const isSwipeV=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
+  const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
 
-  // ---- MENU MODE ----
+  // Menu mode — swipe only (tap handled by click on card)
   if(menuOpen){
-    if(isTap){
-      // Tap on action button → let click handler fire
-      if(e.target.closest('.action-btn')) return;
-      // Tap anywhere else while video selected → close menu
-      if(videoSelected){
-        closeMenu();
-        return;
-      }
-      // Tap but not selected → do nothing
-      return;
-    }
-    if(isSwipeV){
+    if(isSwipe){
       if(dy<-50){
-        // Scroll up → select video
         videoSelected=true;
         card.classList.add('selected');
       }else if(dy>50){
-        // Scroll down → deselect
         videoSelected=false;
         card.classList.remove('selected');
       }
@@ -388,12 +369,8 @@ addEventListener('touchend',e=>{
     return;
   }
 
-  // ---- NORMAL MODE ----
-  if(isTap){
-    openMenu();
-    return;
-  }
-  if(isSwipeV){
+  // Normal mode — swipe to navigate reels
+  if(isSwipe){
     skipCount=0;
     if(dy>50) show(idx+1);   // swipe DOWN → next
     else show(idx-1);         // swipe UP → prev
