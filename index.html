@@ -150,8 +150,11 @@ btnMore.addEventListener('click',(e)=>{
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id,'_blank');
 });
 
-// ===== API via Cloudflare Worker (bypasses CORS) =====
-const PROXY = 'https://tiktok-proxy.mediastarr86.workers.dev';
+// ===== API via Cloudflare Worker =====
+const PROXY='https://tiktok-proxy.mediastarr86.workers.dev';
+
+// Route video through worker so Cloudflare edge serves it with correct headers
+function proxyVideo(url){ return PROXY+'/video?url='+encodeURIComponent(url); }
 
 // ===== BLOB CACHE =====
 const blobCache=new Map();
@@ -215,7 +218,7 @@ async function loadBatch(){
       seenIds.add(v.aweme_id);
       vids.push({
         aweme_id:v.aweme_id,
-        videoUrl,
+        videoUrl:proxyVideo(videoUrl),  // stream through Cloudflare edge
         title:v.desc||'',
         author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:avatarUrl},
         digg_count:v.statistics?.digg_count||0
@@ -237,12 +240,13 @@ async function loadBatch(){
   return totalAdded;
 }
 
-// ===== PRELOAD next 3 as blobs =====
 function preloadAhead(){
+  const reels=document.querySelectorAll('.reel');
   for(let o=1;o<=3;o++){
     const ni=idx+o;
-    if(ni<vids.length&&!blobCache.has(vids[ni].aweme_id)&&!downloading.has(vids[ni].aweme_id)){
-      downloadVideo(vids[ni].aweme_id,vids[ni].videoUrl);
+    if(ni<vids.length&&reels[ni]){
+      const v=reels[ni].querySelector('video');
+      if(!v.src){v.src=vids[ni].videoUrl;v.preload='auto';v.load();}
     }
   }
 }
@@ -259,30 +263,11 @@ async function show(i){
     const vid=r.querySelector('video');
     if(isActive){
       loader.classList.add('show');
-      (async()=>{
-        const v=vids[n];
-        // Play immediately from direct URL — no waiting
-        vid.src=v.videoUrl;
-        if(userTouched){vid.muted=false;vid.volume=1;}else vid.muted=true;
-        vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
-
-        // Download blob in background — swap src when done for smoother looping
-        if(!blobCache.has(v.aweme_id)){
-          downloadVideo(v.aweme_id,v.videoUrl).then(blobUrl=>{
-            // Only swap if still on same video and got a real blob
-            if(idx===n && blobUrl!==v.videoUrl && blobUrl.startsWith('blob:')){
-              const t=vid.currentTime;
-              vid.src=blobUrl;
-              vid.currentTime=t;
-              vid.play().catch(()=>{});
-            }
-          });
-        }
-
-        preloadAhead();
-        cleanBlobs();
-        if(n>=vids.length-3)loadBatch();
-      })();
+      vid.src=vids[n].videoUrl;
+      if(userTouched){vid.muted=false;vid.volume=1;}else vid.muted=true;
+      vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+      preloadAhead();
+      if(n>=vids.length-3)loadBatch();
     }else{
       vid.pause();
       vid.removeAttribute('src');
