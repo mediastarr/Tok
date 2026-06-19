@@ -325,7 +325,17 @@ async function show(i){
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;
-  if(!userTouched){userTouched=true;const v=document.querySelector('.reel.active video');if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}}
+  if(!userTouched){
+    userTouched=true;
+    document.body.classList.remove('needs-unmute');
+    const v=document.querySelector('.reel.active video');
+    if(v){
+      v.muted=false;
+      v.volume=1;
+      // Only call play() if video isn't already playing
+      if(v.paused) v.play().catch(()=>{});
+    }
+  }
 },{passive:true});
 addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
