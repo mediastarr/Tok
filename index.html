@@ -238,6 +238,9 @@ btnMore.addEventListener('click',(e)=>{
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id,'_blank');
 });
 
+// ===== GET BEST VIDEO URL (wmplay is faster CDN, smaller file) =====
+function vidUrl(v){return v.wmplay||v.play;}
+
 // ===== LOAD BATCH =====
 async function loadBatch(){
   if(loading){loadPending=true;return 0;}
@@ -253,7 +256,7 @@ async function loadBatch(){
       const feed=document.getElementById('feed');
       if(data.cursor) cursor=data.cursor; else cursor+=20;
       for(const v of (data.data||[])){
-        if(seenIds.has(v.video_id)||!v.play) continue;
+        if(seenIds.has(v.video_id)||(!v.play&&!v.wmplay)) continue;
         if(v.region&&v.region!=='US') continue;
         seenIds.add(v.video_id);
         vids.push(v);
@@ -264,9 +267,8 @@ async function loadBatch(){
         video.preload='none';
         video.muted=true;
         video.setAttribute('webkit-playsinline','true');
-        // Only skip on genuinely broken videos
-        video.addEventListener('error',()=>{if(reel.classList.contains('active'))show(idx+1);});
-        video.addEventListener('playing',()=>{if(reel.classList.contains('active'))skipCount=0;});
+        // No auto-skip — user swipes manually if video is broken
+        video.addEventListener('playing',()=>{});
         video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
         reel.appendChild(video);
         feed.appendChild(reel);
@@ -281,22 +283,20 @@ async function loadBatch(){
   return totalAdded;
 }
 
-// ===== PRELOAD next 3 =====
+// ===== PRELOAD next 5 =====
 function preloadAhead(){
   const reels=document.querySelectorAll('.reel');
-  for(let o=1;o<=3;o++){
+  for(let o=1;o<=5;o++){
     const ni=idx+o;
     if(ni<vids.length&&reels[ni]){
       const v=reels[ni].querySelector('video');
-      if(!v.src){v.src=vids[ni].play;v.preload='auto';v.load();}
+      if(!v.src){v.src=vidUrl(vids[ni]);v.preload='auto';v.load();}
     }
   }
 }
 
 // ===== SHOW VIDEO =====
 async function show(i){
-  skipCount++;
-  if(skipCount>MAX_SKIPS){skipCount=0;await new Promise(r=>setTimeout(r,500));await loadBatch();}
   if(i>=vids.length){await loadBatch();if(i>=vids.length)i=vids.length-1;}
   if(i<0)i=0;
   idx=i;
@@ -306,24 +306,36 @@ async function show(i){
     r.classList.toggle('active',isActive);
     const vid=r.querySelector('video');
     if(isActive){
-      if(!vid.src) vid.src=vids[n].play;
-      // Start muted so autoplay works, unmute if user has interacted
-      if(userTouched){
-        vid.muted=false;
-        vid.volume=1;
-      }else{
-        vid.muted=true;
+      const url=vidUrl(vids[n]);
+      if(!vid.src) vid.src=url;
+
+      if(userTouched){vid.muted=false;vid.volume=1;}
+      else{vid.muted=true;}
+
+      // Wait for enough data before playing to avoid choppy playback
+      function tryPlay(){
+        vid.play().catch(()=>{
+          vid.muted=true;
+          vid.play().catch(()=>{});
+        });
       }
-      vid.play().catch(()=>{
-        // If unmuted play fails, try muted — don't skip
-        vid.muted=true;
-        vid.play().catch(()=>{});
-      });
+      if(vid.readyState>=3){
+        // Already buffered enough
+        tryPlay();
+      }else{
+        // Wait for buffer
+        vid.addEventListener('canplay',function h(){
+          vid.removeEventListener('canplay',h);
+          tryPlay();
+        });
+        vid.load();
+      }
+
       preloadAhead();
       if(n>=vids.length-4) loadBatch();
     }else{
       vid.pause();
-      if(Math.abs(n-idx)>3){vid.removeAttribute('src');vid.preload='none';}
+      if(Math.abs(n-idx)>4){vid.removeAttribute('src');vid.preload='none';}
     }
   });
 }
