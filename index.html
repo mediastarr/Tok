@@ -89,7 +89,6 @@ body.menu-active .menu-actions{display:flex}
 
 <script>
 let vids=[],idx=0,loading=false,menuOpen=false;
-let cursor=0;
 const seenIds=new Set(),likedIds=new Set(),savedIds=new Set();
 let loadPending=false,userTouched=false;
 
@@ -115,8 +114,8 @@ function openMenu(){
   document.getElementById('menuCap').textContent=d.title||'';
   const av=document.getElementById('menuAvatar');
   av.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'';
-  btnLike.classList.toggle('liked',likedIds.has(d.video_id));
-  btnSave.classList.toggle('saved',savedIds.has(d.video_id));
+  btnLike.classList.toggle('liked',likedIds.has(d.aweme_id));
+  btnSave.classList.toggle('saved',savedIds.has(d.aweme_id));
   document.body.classList.add('menu-active');
 }
 function closeMenu(){
@@ -131,105 +130,108 @@ card.addEventListener('click',(e)=>{e.stopPropagation();if(!menuOpen)openMenu();
 
 // ===== BUTTONS =====
 btnLike.addEventListener('click',(e)=>{
-  e.stopPropagation();if(!vids[idx])return;const id=vids[idx].video_id;
+  e.stopPropagation();if(!vids[idx])return;const id=vids[idx].aweme_id;
   if(likedIds.has(id)){likedIds.delete(id);btnLike.classList.remove('liked');toast('Removed like');}
   else{likedIds.add(id);btnLike.classList.add('liked');toast('Liked!');}
 });
 btnShare.addEventListener('click',(e)=>{
   e.stopPropagation();if(!vids[idx])return;const d=vids[idx];
-  const url='https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id;
+  const url='https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id;
   if(navigator.share)navigator.share({title:d.title||'TikTok',url}).catch(()=>{});
   else navigator.clipboard.writeText(url).then(()=>toast('Link copied!')).catch(()=>toast('Copy failed'));
 });
 btnSave.addEventListener('click',(e)=>{
-  e.stopPropagation();if(!vids[idx])return;const id=vids[idx].video_id;
+  e.stopPropagation();if(!vids[idx])return;const id=vids[idx].aweme_id;
   if(savedIds.has(id)){savedIds.delete(id);btnSave.classList.remove('saved');toast('Unsaved');}
   else{savedIds.add(id);btnSave.classList.add('saved');toast('Saved!');}
 });
 btnMore.addEventListener('click',(e)=>{
   e.stopPropagation();if(!vids[idx])return;const d=vids[idx];
-  window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id,'_blank');
+  window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id,'_blank');
 });
 
-// ===== BLOB CACHE — download full video to memory, then play =====
-const blobCache=new Map(); // video_id -> blobUrl
-const downloading=new Set(); // currently downloading
+// ===== API via Cloudflare Worker (bypasses CORS) =====
+const PROXY = 'https://tiktok-proxy.mediastarr86.workers.dev';
+
+// ===== BLOB CACHE =====
+const blobCache=new Map();
+const downloading=new Set();
 
 async function downloadVideo(id,url){
   if(blobCache.has(id)) return blobCache.get(id);
-  if(downloading.has(id)) return null;
+  if(downloading.has(id)) return url;
   downloading.add(id);
   try{
     const res=await fetch(url,{mode:'cors'});
-    if(!res.ok) throw new Error('bad status');
+    if(!res.ok) throw new Error('bad');
     const blob=await res.blob();
-    if(blob.size<1000) throw new Error('empty blob');
+    if(blob.size<1000) throw new Error('empty');
     const blobUrl=URL.createObjectURL(blob);
     blobCache.set(id,blobUrl);
     downloading.delete(id);
     return blobUrl;
   }catch(e){
     downloading.delete(id);
-    // Return the direct URL as fallback — browser streams it
     return url;
   }
 }
 
-// Clean up blobs far from current index to save memory
 function cleanBlobs(){
   vids.forEach((v,n)=>{
-    if(Math.abs(n-idx)>6 && blobCache.has(v.video_id)){
-      URL.revokeObjectURL(blobCache.get(v.video_id));
-      blobCache.delete(v.video_id);
+    if(Math.abs(n-idx)>6&&blobCache.has(v.aweme_id)){
+      URL.revokeObjectURL(blobCache.get(v.aweme_id));
+      blobCache.delete(v.aweme_id);
     }
   });
 }
 
-// ===== LOAD BATCH (TikWM) =====
+// ===== LOAD BATCH (SociaVault via Cloudflare Worker) =====
 async function loadBatch(){
   if(loading){loadPending=true;return 0;}
   loading=true;
-  let retries=2,totalAdded=0;
-  while(retries>=0){
-    try{
-      let url='https://www.tikwm.com/api/feed/list?region=US&count=20&language=en';
-      if(cursor)url+='&cursor='+cursor;
-      url+='&_='+Date.now()+Math.random();
-      const res=await fetch(url);
-      const data=await res.json();
-      const feed=document.getElementById('feed');
-      if(data.cursor)cursor=data.cursor;else cursor+=20;
-      for(const v of(data.data||[])){
-        if(seenIds.has(v.video_id)||!v.play)continue;
-        if(v.region&&v.region!=='US')continue;
-        seenIds.add(v.video_id);
-        vids.push(v);
-        const reel=document.createElement('div');
-        reel.className='reel';
-        const video=document.createElement('video');
-        video.playsInline=true;video.preload='none';video.muted=true;
-        video.setAttribute('webkit-playsinline','true');
-        video.addEventListener('playing',()=>{if(reel.classList.contains('active'))loader.classList.remove('show');});
-        video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
-        reel.appendChild(video);
-        feed.appendChild(reel);
-        totalAdded++;
-      }
-      if(totalAdded>0)break;
-      retries--;cursor+=20;
-    }catch(e){retries--;}
-  }
+  let totalAdded=0;
+  try{
+    const res=await fetch(PROXY+'/trending?region=US');
+    const data=await res.json();
+    const feed=document.getElementById('feed');
+    const items=Object.values(data?.data?.aweme_list||{});
+    for(const v of items){
+      if(seenIds.has(v.aweme_id)) continue;
+      const urlObj=v.video?.download_no_watermark_addr||v.video?.play_addr||{};
+      const videoUrl=Object.values(urlObj.url_list||{})[0];
+      if(!videoUrl) continue;
+      const avatarUrl=Object.values(v.author?.avatar_thumb?.url_list||{})[0]||'';
+      seenIds.add(v.aweme_id);
+      vids.push({
+        aweme_id:v.aweme_id,
+        videoUrl,
+        title:v.desc||'',
+        author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:avatarUrl},
+        digg_count:v.statistics?.digg_count||0
+      });
+      const reel=document.createElement('div');
+      reel.className='reel';
+      const video=document.createElement('video');
+      video.playsInline=true;video.preload='none';video.muted=true;
+      video.setAttribute('webkit-playsinline','true');
+      video.addEventListener('playing',()=>{if(reel.classList.contains('active'))loader.classList.remove('show');});
+      video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
+      reel.appendChild(video);
+      feed.appendChild(reel);
+      totalAdded++;
+    }
+  }catch(e){console.error('loadBatch error',e);}
   loading=false;
-  if(loadPending){loadPending=false;if(totalAdded===0)return loadBatch();}
+  if(loadPending){loadPending=false;}
   return totalAdded;
 }
 
-// ===== PRELOAD — download next 3 videos as blobs in background =====
+// ===== PRELOAD next 3 as blobs =====
 function preloadAhead(){
   for(let o=1;o<=3;o++){
     const ni=idx+o;
-    if(ni<vids.length && !blobCache.has(vids[ni].video_id) && !downloading.has(vids[ni].video_id)){
-      downloadVideo(vids[ni].video_id, vids[ni].play);
+    if(ni<vids.length&&!blobCache.has(vids[ni].aweme_id)&&!downloading.has(vids[ni].aweme_id)){
+      downloadVideo(vids[ni].aweme_id,vids[ni].videoUrl);
     }
   }
 }
@@ -246,26 +248,16 @@ async function show(i){
     const vid=r.querySelector('video');
     if(isActive){
       loader.classList.add('show');
-
       (async()=>{
-        // Download full video to memory, fall back to direct URL
-        let blobUrl=blobCache.get(vids[n].video_id);
-        if(!blobUrl){
-          blobUrl=await downloadVideo(vids[n].video_id, vids[n].play);
-        }
-        // blobUrl is either a blob: URL (downloaded) or the original play URL (fallback)
-        if(!blobUrl) blobUrl=vids[n].play;
-
-        // Set blob as src — entire file is in memory, zero buffering
-        vid.src=blobUrl;
-        if(userTouched){vid.muted=false;vid.volume=1;}
-        else vid.muted=true;
+        let src=blobCache.get(vids[n].aweme_id);
+        if(!src) src=await downloadVideo(vids[n].aweme_id,vids[n].videoUrl);
+        if(!src) src=vids[n].videoUrl;
+        vid.src=src;
+        if(userTouched){vid.muted=false;vid.volume=1;}else vid.muted=true;
         vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
-
-        // Start downloading next videos in background
         preloadAhead();
         cleanBlobs();
-        if(n>=vids.length-4)loadBatch();
+        if(n>=vids.length-3)loadBatch();
       })();
     }else{
       vid.pause();
@@ -278,8 +270,7 @@ async function show(i){
 (async()=>{
   loader.classList.add('show');
   await loadBatch();
-  // Pre-download first video before playing
-  if(vids.length>0) await downloadVideo(vids[0].video_id, vids[0].play);
+  if(vids.length>0) await downloadVideo(vids[0].aweme_id,vids[0].videoUrl);
   await show(0);
 })();
 
