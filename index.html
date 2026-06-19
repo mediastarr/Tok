@@ -157,18 +157,21 @@ const downloading=new Set(); // currently downloading
 
 async function downloadVideo(id,url){
   if(blobCache.has(id)) return blobCache.get(id);
-  if(downloading.has(id)) return null; // already in progress
+  if(downloading.has(id)) return null;
   downloading.add(id);
   try{
-    const res=await fetch(url);
+    const res=await fetch(url,{mode:'cors'});
+    if(!res.ok) throw new Error('bad status');
     const blob=await res.blob();
+    if(blob.size<1000) throw new Error('empty blob');
     const blobUrl=URL.createObjectURL(blob);
     blobCache.set(id,blobUrl);
     downloading.delete(id);
     return blobUrl;
   }catch(e){
     downloading.delete(id);
-    return null;
+    // Return the direct URL as fallback — browser streams it
+    return url;
   }
 }
 
@@ -245,12 +248,13 @@ async function show(i){
       loader.classList.add('show');
 
       (async()=>{
-        // Download full video to memory first
+        // Download full video to memory, fall back to direct URL
         let blobUrl=blobCache.get(vids[n].video_id);
         if(!blobUrl){
           blobUrl=await downloadVideo(vids[n].video_id, vids[n].play);
         }
-        if(!blobUrl){loader.classList.remove('show');return;}
+        // blobUrl is either a blob: URL (downloaded) or the original play URL (fallback)
+        if(!blobUrl) blobUrl=vids[n].play;
 
         // Set blob as src — entire file is in memory, zero buffering
         vid.src=blobUrl;
