@@ -150,11 +150,8 @@ btnMore.addEventListener('click',(e)=>{
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id,'_blank');
 });
 
-// ===== API via Cloudflare Worker =====
+// ===== API via Cloudflare Worker (metadata only) =====
 const PROXY='https://tiktok-proxy.mediastarr86.workers.dev';
-
-// Route video through worker so Cloudflare edge serves it with correct headers
-function proxyVideo(url){ return PROXY+'/video?url='+encodeURIComponent(url); }
 
 // ===== BLOB CACHE =====
 const blobCache=new Map();
@@ -218,7 +215,7 @@ async function loadBatch(){
       seenIds.add(v.aweme_id);
       vids.push({
         aweme_id:v.aweme_id,
-        videoUrl:proxyVideo(videoUrl),  // stream through Cloudflare edge
+        videoUrl:videoUrl,
         title:v.desc||'',
         author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:avatarUrl},
         digg_count:v.statistics?.digg_count||0
@@ -264,8 +261,43 @@ async function show(i){
     if(isActive){
       loader.classList.add('show');
       vid.src=vids[n].videoUrl;
+      vid.preload='auto';
       if(userTouched){vid.muted=false;vid.volume=1;}else vid.muted=true;
-      vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+
+      // Wait until at least 3 seconds are buffered before playing
+      // This prevents the constant stutter from starting too early
+      const startWhenReady=()=>{
+        const tryPlay=()=>{
+          vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+        };
+
+        if(vid.readyState>=3){
+          // HAVE_FUTURE_DATA — enough to start
+          tryPlay();
+        }else if(vid.buffered.length>0 && vid.buffered.end(0)>=3){
+          // 3+ seconds buffered
+          tryPlay();
+        }else{
+          // Wait for more data
+          const onProgress=()=>{
+            if(vid.buffered.length>0 && vid.buffered.end(0)>=3){
+              vid.removeEventListener('progress',onProgress);
+              vid.removeEventListener('canplaythrough',onReady);
+              tryPlay();
+            }
+          };
+          const onReady=()=>{
+            vid.removeEventListener('progress',onProgress);
+            vid.removeEventListener('canplaythrough',onReady);
+            tryPlay();
+          };
+          vid.addEventListener('progress',onProgress);
+          vid.addEventListener('canplaythrough',onReady);
+          vid.load();
+        }
+      };
+      startWhenReady();
+
       preloadAhead();
       if(n>=vids.length-3)loadBatch();
     }else{
