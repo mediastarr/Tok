@@ -20,7 +20,9 @@ body{color:#fff;font-family:-apple-system,system-ui,sans-serif;touch-action:none
   height:82vh;aspect-ratio:9/16;border-radius:14px;
   overflow:hidden;position:relative;transition:height .2s ease;
   flex-shrink:0;background:#000;cursor:pointer;
+  pointer-events:none;
 }
+body.ready .card{pointer-events:auto}
 body.menu-active .card{height:48vh}
 
 #feed{position:absolute;inset:0}
@@ -60,9 +62,30 @@ body.menu-active .menu-actions{display:flex}
 .loader.show{opacity:1}
 .spin{width:32px;height:32px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+
+.splash{
+  position:fixed;inset:0;z-index:999;
+  background:#000;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  cursor:pointer;gap:16px;
+}
+.splash-icon{
+  width:72px;height:72px;border-radius:50%;
+  background:#fff;color:#000;
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;padding-left:4px;
+}
+.splash-text{color:#fff;font-size:15px;letter-spacing:.05em}
 </style>
 </head>
 <body>
+<!-- Tap to start splash -->
+<div class="splash" id="splash">
+  <div class="splash-icon">▶</div>
+  <div class="splash-text">Tap to Start</div>
+</div>
+
 <div class="stage">
   <div class="card" id="card">
     <div id="feed"></div>
@@ -269,7 +292,8 @@ async function show(i){
       loader.classList.add('show');
       vid.src=vids[n].videoUrl;
       vid.preload='auto';
-      if(userTouched){vid.muted=false;vid.volume=1;}else vid.muted=true;
+      vid.muted=false;
+      vid.volume=1;
 
       // Wait until at least 3 seconds are buffered before playing
       // This prevents the constant stutter from starting too early
@@ -314,28 +338,23 @@ async function show(i){
   });
 }
 
-// ===== AUTO-PLAY =====
-(async()=>{
+// ===== SPLASH → START WITH SOUND =====
+document.getElementById('splash').addEventListener('click', async (e)=>{
+  e.stopPropagation();
+  userTouched=true;
+  document.getElementById('splash').style.display='none';
+  document.body.classList.add('ready');
   loader.classList.add('show');
   await loadBatch();
   await show(0);
-})();
+  const v=document.querySelector('.reel.active video');
+  if(v){v.muted=false;v.volume=1;}
+},{once:true});
 
 // ===== SWIPE =====
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;
-  if(!userTouched){
-    userTouched=true;
-    document.body.classList.remove('needs-unmute');
-    const v=document.querySelector('.reel.active video');
-    if(v){
-      v.muted=false;
-      v.volume=1;
-      // Only call play() if video isn't already playing
-      if(v.paused) v.play().catch(()=>{});
-    }
-  }
 },{passive:true});
 addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
