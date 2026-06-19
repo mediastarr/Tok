@@ -195,7 +195,7 @@ async function loadBatch(){
   loading=true;
   let totalAdded=0;
   try{
-    const res=await fetch(PROXY+'/trending?region=US');
+    const res=await fetch(PROXY+'/');
     const data=await res.json();
     const feed=document.getElementById('feed');
     const items=Object.values(data?.data?.aweme_list||{});
