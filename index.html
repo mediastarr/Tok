@@ -220,16 +220,8 @@ async function show(i){
       if(userTouched){vid.muted=false;vid.volume=1;}
       else vid.muted=true;
 
-      function tryPlay(){
-        loader.classList.remove('show');
-        vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
-      }
-      if(vid.readyState>=3)tryPlay();
-      else{
-        loader.classList.add('show');
-        vid.addEventListener('canplay',function h(){vid.removeEventListener('canplay',h);tryPlay();});
-        vid.load();
-      }
+      loader.classList.add('show');
+      vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
       preloadAhead();
       if(n>=vids.length-4)loadBatch();
     }else{
