@@ -162,8 +162,12 @@ async function downloadVideo(id,url){
   if(downloading.has(id)) return url;
   downloading.add(id);
   try{
-    const res=await fetch(url,{mode:'cors'});
-    if(!res.ok) throw new Error('bad');
+    // Race the fetch against an 8s timeout — if slow, just stream directly
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    const res=await fetch(url,{mode:'cors',signal:controller.signal});
+    clearTimeout(timeout);
+    if(!res.ok) throw new Error('bad status');
     const blob=await res.blob();
     if(blob.size<1000) throw new Error('empty');
     const blobUrl=URL.createObjectURL(blob);
@@ -172,7 +176,7 @@ async function downloadVideo(id,url){
     return blobUrl;
   }catch(e){
     downloading.delete(id);
-    return url;
+    return url; // fall back to direct stream
   }
 }
 
@@ -197,9 +201,16 @@ async function loadBatch(){
     const items=Object.values(data?.data?.aweme_list||{});
     for(const v of items){
       if(seenIds.has(v.aweme_id)) continue;
-      const urlObj=v.video?.download_no_watermark_addr||v.video?.play_addr||{};
+
+      // Skip image/slideshow posts (duration 0) and long videos (over 90s)
+      const dur=v.video?.duration||0;
+      if(dur===0||dur>90) continue;
+
+      const urlObj=v.video?.play_addr||{};
       const videoUrl=Object.values(urlObj.url_list||{})[0];
-      if(!videoUrl) continue;
+
+      // Skip non-video URLs (mp3 etc)
+      if(!videoUrl||!videoUrl.includes('tiktokcdn')) continue;
       const avatarUrl=Object.values(v.author?.avatar_thumb?.url_list||{})[0]||'';
       seenIds.add(v.aweme_id);
       vids.push({
@@ -249,12 +260,25 @@ async function show(i){
     if(isActive){
       loader.classList.add('show');
       (async()=>{
-        let src=blobCache.get(vids[n].aweme_id);
-        if(!src) src=await downloadVideo(vids[n].aweme_id,vids[n].videoUrl);
-        if(!src) src=vids[n].videoUrl;
-        vid.src=src;
+        const v=vids[n];
+        // Play immediately from direct URL — no waiting
+        vid.src=v.videoUrl;
         if(userTouched){vid.muted=false;vid.volume=1;}else vid.muted=true;
         vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+
+        // Download blob in background — swap src when done for smoother looping
+        if(!blobCache.has(v.aweme_id)){
+          downloadVideo(v.aweme_id,v.videoUrl).then(blobUrl=>{
+            // Only swap if still on same video and got a real blob
+            if(idx===n && blobUrl!==v.videoUrl && blobUrl.startsWith('blob:')){
+              const t=vid.currentTime;
+              vid.src=blobUrl;
+              vid.currentTime=t;
+              vid.play().catch(()=>{});
+            }
+          });
+        }
+
         preloadAhead();
         cleanBlobs();
         if(n>=vids.length-3)loadBatch();
@@ -270,7 +294,6 @@ async function show(i){
 (async()=>{
   loader.classList.add('show');
   await loadBatch();
-  if(vids.length>0) await downloadVideo(vids[0].aweme_id,vids[0].videoUrl);
   await show(0);
 })();
 
