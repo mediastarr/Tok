@@ -16,95 +16,61 @@ body{color:#fff;font-family:-apple-system,system-ui,sans-serif;touch-action:none
   gap:8px;
 }
 
-/* Card sized by HEIGHT so it never overflows viewport */
 .card{
-  height:82vh;
-  aspect-ratio:9/16;
-  border-radius:14px;
-  overflow:hidden;
-  position:relative;
-  transition:height .2s ease;
-  flex-shrink:0;
-  background:#000;
-  cursor:pointer;
+  height:82vh;aspect-ratio:9/16;border-radius:14px;
+  overflow:hidden;position:relative;transition:height .2s ease;
+  flex-shrink:0;background:#000;cursor:pointer;
 }
 body.menu-active .card{height:48vh}
-.card.selected{box-shadow:0 0 0 3px rgba(255,255,255,.8)}
 
 #feed{position:absolute;inset:0}
 .reel{position:absolute;inset:0;display:none;background:#000}
 .reel.active{display:block}
 .reel video{width:100%;height:100%;object-fit:cover}
 
-/* Play overlay — menu mode only */
 .play-overlay{
-  position:absolute;inset:0;
-  display:none;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.3);
-  pointer-events:none;z-index:5;
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.3);pointer-events:none;z-index:5;
 }
 body.menu-active .play-overlay{display:flex}
 .play-circle{
-  width:48px;height:48px;border-radius:50%;
-  background:rgba(0,0,0,.5);
-  border:2px solid rgba(255,255,255,.6);
-  display:flex;align-items:center;justify-content:center;
+  width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.5);
+  border:2px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;
 }
 .play-circle svg{width:20px;height:20px;fill:rgba(255,255,255,.9);margin-left:2px}
 
-/* Menu info */
-.menu-info{
-  display:none;
-  flex-direction:column;
-  align-items:flex-start;
-  width:auto;
-  max-width:80%;
-  padding:0 4px;
-}
+.menu-info{display:none;flex-direction:column;align-items:flex-start;width:auto;max-width:80%;padding:0 4px}
 body.menu-active .menu-info{display:flex}
 .menu-user-row{font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
 .menu-avatar{width:22px;height:22px;border-radius:50%;background:#444;border:1px solid #666;overflow:hidden;flex-shrink:0}
 .menu-avatar img{width:100%;height:100%;object-fit:cover}
 .menu-cap{font-size:12px;color:#ccc;margin-top:2px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* Action bar */
-.menu-actions{
-  display:none;
-  gap:18px;
-  padding:10px 24px;
-  background:rgba(50,50,50,.8);
-  border-radius:40px;
-}
+.menu-actions{display:none;gap:18px;padding:10px 24px;background:rgba(50,50,50,.8);border-radius:40px}
 body.menu-active .menu-actions{display:flex}
-.action-btn{
-  width:28px;height:28px;
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-}
+.action-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .action-btn svg{width:24px;height:24px;fill:#fff;opacity:.85;transition:all .15s}
 .action-btn.liked svg{fill:#fe2c55;opacity:1}
 .action-btn.saved svg{fill:#ffe135;opacity:1}
 
-.toast{
-  position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
-  background:rgba(60,60,60,.85);color:#fff;
-  padding:7px 16px;border-radius:20px;font-size:12px;
-  opacity:0;transition:opacity .3s;pointer-events:none;z-index:200;
-}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(60,60,60,.85);color:#fff;padding:7px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
 .toast.show{opacity:1}
+
+.loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);z-index:4;pointer-events:none;opacity:0;transition:opacity .2s}
+.loader.show{opacity:1}
+.spin{width:32px;height:32px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-
 <div class="stage">
   <div class="card" id="card">
     <div id="feed"></div>
     <div class="play-overlay">
       <div class="play-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
     </div>
+    <div class="loader" id="loader"><div class="spin"></div></div>
   </div>
-
   <div class="menu-info" id="menuInfo">
     <div class="menu-user-row">
       <div class="menu-avatar" id="menuAvatar"></div>
@@ -112,64 +78,38 @@ body.menu-active .menu-actions{display:flex}
     </div>
     <div class="menu-cap" id="menuCap"></div>
   </div>
-
   <div class="menu-actions" id="menuActions">
-    <div class="action-btn" id="btnLike" tabindex="0">
-      <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-    </div>
-    <div class="action-btn" id="btnShare" tabindex="0">
-      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-    </div>
-    <div class="action-btn" id="btnSave" tabindex="0">
-      <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-    </div>
-    <div class="action-btn" id="btnMore" tabindex="0">
-      <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-    </div>
+    <div class="action-btn" id="btnLike" tabindex="0"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>
+    <div class="action-btn" id="btnShare" tabindex="0"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
+    <div class="action-btn" id="btnSave" tabindex="0"><svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg></div>
+    <div class="action-btn" id="btnMore" tabindex="0"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></div>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
-let vids=[], idx=0, loading=false;
-let menuOpen=false;
+let vids=[],idx=0,loading=false,menuOpen=false;
 let cursor=0;
-const seenIds=new Set();
-const likedIds=new Set();
-const savedIds=new Set();
-let skipCount=0;
-const MAX_SKIPS=5;
-let loadPending=false;
-let userTouched=false;
+const seenIds=new Set(),likedIds=new Set(),savedIds=new Set();
+let loadPending=false,userTouched=false;
 
 const card=document.getElementById('card');
 const toastEl=document.getElementById('toast');
+const loader=document.getElementById('loader');
 const btnLike=document.getElementById('btnLike');
 const btnShare=document.getElementById('btnShare');
 const btnSave=document.getElementById('btnSave');
 const btnMore=document.getElementById('btnMore');
 
-// ===== TOAST =====
 let toastT=null;
-function toast(msg){
-  clearTimeout(toastT);
-  toastEl.textContent=msg;
-  toastEl.classList.add('show');
-  toastT=setTimeout(()=>toastEl.classList.remove('show'),1600);
-}
+function toast(msg){clearTimeout(toastT);toastEl.textContent=msg;toastEl.classList.add('show');toastT=setTimeout(()=>toastEl.classList.remove('show'),1600);}
 
-// ===== OPEN MENU =====
+// ===== MENU =====
 function openMenu(){
   if(!vids[idx]||menuOpen) return;
   menuOpen=true;
-  card.classList.remove('selected');
-
-  // Pause video
   const v=document.querySelector('.reel.active video');
   if(v) v.pause();
-
-  // Populate
   const d=vids[idx];
   document.getElementById('menuUser').textContent='@'+(d.author?.unique_id||'user');
   document.getElementById('menuCap').textContent=d.title||'';
@@ -177,71 +117,41 @@ function openMenu(){
   av.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'';
   btnLike.classList.toggle('liked',likedIds.has(d.video_id));
   btnSave.classList.toggle('saved',savedIds.has(d.video_id));
-
   document.body.classList.add('menu-active');
 }
-
-// ===== CLOSE MENU =====
 function closeMenu(){
   if(!menuOpen) return;
   menuOpen=false;
   document.body.classList.remove('menu-active');
-  card.classList.remove('selected');
-
-  // Resume video
   const v=document.querySelector('.reel.active video');
   if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}
 }
 
-// ===== TAP ON CARD — uses click event, reliable on Neural Band =====
-card.addEventListener('click',(e)=>{
-  e.stopPropagation();
-  if(!menuOpen) openMenu();
-  else closeMenu();
-});
+card.addEventListener('click',(e)=>{e.stopPropagation();if(!menuOpen)openMenu();else closeMenu();});
 
-// ===== BUTTON HANDLERS =====
+// ===== BUTTONS =====
 btnLike.addEventListener('click',(e)=>{
-  e.stopPropagation();
-  if(!vids[idx]) return;
-  const id=vids[idx].video_id;
+  e.stopPropagation();if(!vids[idx])return;const id=vids[idx].video_id;
   if(likedIds.has(id)){likedIds.delete(id);btnLike.classList.remove('liked');toast('Removed like');}
   else{likedIds.add(id);btnLike.classList.add('liked');toast('Liked!');}
 });
-
 btnShare.addEventListener('click',(e)=>{
-  e.stopPropagation();
-  if(!vids[idx]) return;
-  const d=vids[idx];
+  e.stopPropagation();if(!vids[idx])return;const d=vids[idx];
   const url='https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id;
-  if(navigator.share) navigator.share({title:d.title||'TikTok',url}).catch(()=>{});
-  else{
-    navigator.clipboard.writeText(url).then(()=>toast('Link copied!')).catch(()=>{
-      const t=document.createElement('textarea');t.value=url;document.body.appendChild(t);t.select();
-      document.execCommand('copy');document.body.removeChild(t);toast('Link copied!');
-    });
-  }
+  if(navigator.share)navigator.share({title:d.title||'TikTok',url}).catch(()=>{});
+  else navigator.clipboard.writeText(url).then(()=>toast('Link copied!')).catch(()=>toast('Copy failed'));
 });
-
 btnSave.addEventListener('click',(e)=>{
-  e.stopPropagation();
-  if(!vids[idx]) return;
-  const id=vids[idx].video_id;
+  e.stopPropagation();if(!vids[idx])return;const id=vids[idx].video_id;
   if(savedIds.has(id)){savedIds.delete(id);btnSave.classList.remove('saved');toast('Unsaved');}
   else{savedIds.add(id);btnSave.classList.add('saved');toast('Saved!');}
 });
-
 btnMore.addEventListener('click',(e)=>{
-  e.stopPropagation();
-  if(!vids[idx]) return;
-  const d=vids[idx];
+  e.stopPropagation();if(!vids[idx])return;const d=vids[idx];
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id,'_blank');
 });
 
-// ===== GET BEST VIDEO URL (wmplay is faster CDN, smaller file) =====
-function vidUrl(v){return v.wmplay||v.play;}
-
-// ===== LOAD BATCH =====
+// ===== LOAD BATCH (TikWM) =====
 async function loadBatch(){
   if(loading){loadPending=true;return 0;}
   loading=true;
@@ -249,32 +159,31 @@ async function loadBatch(){
   while(retries>=0){
     try{
       let url='https://www.tikwm.com/api/feed/list?region=US&count=20&language=en';
-      if(cursor) url+='&cursor='+cursor;
+      if(cursor)url+='&cursor='+cursor;
       url+='&_='+Date.now()+Math.random();
       const res=await fetch(url);
       const data=await res.json();
       const feed=document.getElementById('feed');
-      if(data.cursor) cursor=data.cursor; else cursor+=20;
-      for(const v of (data.data||[])){
-        if(seenIds.has(v.video_id)||(!v.play&&!v.wmplay)) continue;
-        if(v.region&&v.region!=='US') continue;
+      if(data.cursor)cursor=data.cursor;else cursor+=20;
+      for(const v of(data.data||[])){
+        if(seenIds.has(v.video_id)||!v.play)continue;
+        if(v.region&&v.region!=='US')continue;
         seenIds.add(v.video_id);
         vids.push(v);
         const reel=document.createElement('div');
         reel.className='reel';
         const video=document.createElement('video');
-        video.playsInline=true;
-        video.preload='none';
-        video.muted=true;
+        video.playsInline=true;video.preload='none';video.muted=true;
         video.setAttribute('webkit-playsinline','true');
-        // No auto-skip — user swipes manually if video is broken
-        video.addEventListener('playing',()=>{});
+        video.addEventListener('waiting',()=>{if(reel.classList.contains('active'))loader.classList.add('show');});
+        video.addEventListener('playing',()=>{if(reel.classList.contains('active'))loader.classList.remove('show');});
+        video.addEventListener('canplay',()=>{if(reel.classList.contains('active'))loader.classList.remove('show');});
         video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
         reel.appendChild(video);
         feed.appendChild(reel);
         totalAdded++;
       }
-      if(totalAdded>0) break;
+      if(totalAdded>0)break;
       retries--;cursor+=20;
     }catch(e){retries--;}
   }
@@ -290,7 +199,7 @@ function preloadAhead(){
     const ni=idx+o;
     if(ni<vids.length&&reels[ni]){
       const v=reels[ni].querySelector('video');
-      if(!v.src){v.src=vidUrl(vids[ni]);v.preload='auto';v.load();}
+      if(!v.src){v.src=vids[ni].play;v.preload='auto';v.load();}
     }
   }
 }
@@ -306,87 +215,52 @@ async function show(i){
     r.classList.toggle('active',isActive);
     const vid=r.querySelector('video');
     if(isActive){
-      const url=vidUrl(vids[n]);
-      if(!vid.src) vid.src=url;
-
+      if(!vid.src)vid.src=vids[n].play;
+      vid.preload='auto';
       if(userTouched){vid.muted=false;vid.volume=1;}
-      else{vid.muted=true;}
+      else vid.muted=true;
 
-      // Wait for enough data before playing to avoid choppy playback
       function tryPlay(){
-        vid.play().catch(()=>{
-          vid.muted=true;
-          vid.play().catch(()=>{});
-        });
+        loader.classList.remove('show');
+        vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
       }
-      if(vid.readyState>=3){
-        // Already buffered enough
-        tryPlay();
-      }else{
-        // Wait for buffer
-        vid.addEventListener('canplay',function h(){
-          vid.removeEventListener('canplay',h);
-          tryPlay();
-        });
+      if(vid.readyState>=3)tryPlay();
+      else{
+        loader.classList.add('show');
+        vid.addEventListener('canplay',function h(){vid.removeEventListener('canplay',h);tryPlay();});
         vid.load();
       }
-
       preloadAhead();
-      if(n>=vids.length-4) loadBatch();
+      if(n>=vids.length-4)loadBatch();
     }else{
       vid.pause();
-      if(Math.abs(n-idx)>4){vid.removeAttribute('src');vid.preload='none';}
+      if(Math.abs(n-idx)>5){vid.removeAttribute('src');vid.preload='none';}
     }
   });
 }
 
-// ===== AUTO-PLAY ON LOAD =====
-(async()=>{await loadBatch();await show(0);})();
+// ===== AUTO-PLAY =====
+(async()=>{loader.classList.add('show');await loadBatch();await show(0);})();
 
-// ===== SWIPE GESTURES (touch handler — swipes ONLY, no tap logic) =====
+// ===== SWIPE =====
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{
-  sx=e.touches[0].clientX;
-  sy=e.touches[0].clientY;
-
-  // First touch → unmute current video + re-play to satisfy autoplay policy
-  if(!userTouched){
-    userTouched=true;
-    const v=document.querySelector('.reel.active video');
-    if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}
-  }
+  sx=e.touches[0].clientX;sy=e.touches[0].clientY;
+  if(!userTouched){userTouched=true;const v=document.querySelector('.reel.active video');if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}}
 },{passive:true});
-
 addEventListener('touchend',e=>{
-  const dx=e.changedTouches[0].clientX-sx;
-  const dy=e.changedTouches[0].clientY-sy;
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
-
-  // Menu mode — swipe up = select video = close menu + resume
-  if(menuOpen){
-    if(isSwipe && dy<-50){
-      closeMenu();
-    }
-    return;
-  }
-
-  // Normal mode — swipe to navigate reels
-  if(isSwipe){
-    skipCount=0;
-    if(dy>50) show(idx+1);   // swipe DOWN → next
-    else show(idx-1);         // swipe UP → prev
-  }
+  if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
+  if(isSwipe){if(dy>50)show(idx+1);else show(idx-1);}
 },{passive:true});
 
 // ===== KEYBOARD =====
 addEventListener('keydown',e=>{
-  if(!userTouched) userTouched=true;
-  if(menuOpen){
-    if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}
-    return;
-  }
-  if(e.key==='ArrowDown'){skipCount=0;show(idx+1);}
-  if(e.key==='ArrowUp'){skipCount=0;show(idx-1);}
+  if(!userTouched)userTouched=true;
+  if(menuOpen){if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}return;}
+  if(e.key==='ArrowDown')show(idx+1);
+  if(e.key==='ArrowUp')show(idx-1);
 });
 </script>
 </body>
