@@ -151,6 +151,37 @@ btnMore.addEventListener('click',(e)=>{
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id,'_blank');
 });
 
+// ===== BLOB CACHE — download full video to memory, then play =====
+const blobCache=new Map(); // video_id -> blobUrl
+const downloading=new Set(); // currently downloading
+
+async function downloadVideo(id,url){
+  if(blobCache.has(id)) return blobCache.get(id);
+  if(downloading.has(id)) return null; // already in progress
+  downloading.add(id);
+  try{
+    const res=await fetch(url);
+    const blob=await res.blob();
+    const blobUrl=URL.createObjectURL(blob);
+    blobCache.set(id,blobUrl);
+    downloading.delete(id);
+    return blobUrl;
+  }catch(e){
+    downloading.delete(id);
+    return null;
+  }
+}
+
+// Clean up blobs far from current index to save memory
+function cleanBlobs(){
+  vids.forEach((v,n)=>{
+    if(Math.abs(n-idx)>6 && blobCache.has(v.video_id)){
+      URL.revokeObjectURL(blobCache.get(v.video_id));
+      blobCache.delete(v.video_id);
+    }
+  });
+}
+
 // ===== LOAD BATCH (TikWM) =====
 async function loadBatch(){
   if(loading){loadPending=true;return 0;}
@@ -175,9 +206,7 @@ async function loadBatch(){
         const video=document.createElement('video');
         video.playsInline=true;video.preload='none';video.muted=true;
         video.setAttribute('webkit-playsinline','true');
-        video.addEventListener('waiting',()=>{if(reel.classList.contains('active'))loader.classList.add('show');});
         video.addEventListener('playing',()=>{if(reel.classList.contains('active'))loader.classList.remove('show');});
-        video.addEventListener('canplay',()=>{if(reel.classList.contains('active'))loader.classList.remove('show');});
         video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
         reel.appendChild(video);
         feed.appendChild(reel);
@@ -192,14 +221,12 @@ async function loadBatch(){
   return totalAdded;
 }
 
-// ===== PRELOAD next 5 =====
+// ===== PRELOAD — download next 3 videos as blobs in background =====
 function preloadAhead(){
-  const reels=document.querySelectorAll('.reel');
-  for(let o=1;o<=5;o++){
+  for(let o=1;o<=3;o++){
     const ni=idx+o;
-    if(ni<vids.length&&reels[ni]){
-      const v=reels[ni].querySelector('video');
-      if(!v.src){v.src=vids[ni].play;v.preload='auto';v.load();}
+    if(ni<vids.length && !blobCache.has(vids[ni].video_id) && !downloading.has(vids[ni].video_id)){
+      downloadVideo(vids[ni].video_id, vids[ni].play);
     }
   }
 }
@@ -215,24 +242,42 @@ async function show(i){
     r.classList.toggle('active',isActive);
     const vid=r.querySelector('video');
     if(isActive){
-      if(!vid.src)vid.src=vids[n].play;
-      vid.preload='auto';
-      if(userTouched){vid.muted=false;vid.volume=1;}
-      else vid.muted=true;
-
       loader.classList.add('show');
-      vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
-      preloadAhead();
-      if(n>=vids.length-4)loadBatch();
+
+      (async()=>{
+        // Download full video to memory first
+        let blobUrl=blobCache.get(vids[n].video_id);
+        if(!blobUrl){
+          blobUrl=await downloadVideo(vids[n].video_id, vids[n].play);
+        }
+        if(!blobUrl){loader.classList.remove('show');return;}
+
+        // Set blob as src — entire file is in memory, zero buffering
+        vid.src=blobUrl;
+        if(userTouched){vid.muted=false;vid.volume=1;}
+        else vid.muted=true;
+        vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+
+        // Start downloading next videos in background
+        preloadAhead();
+        cleanBlobs();
+        if(n>=vids.length-4)loadBatch();
+      })();
     }else{
       vid.pause();
-      if(Math.abs(n-idx)>5){vid.removeAttribute('src');vid.preload='none';}
+      vid.removeAttribute('src');
     }
   });
 }
 
 // ===== AUTO-PLAY =====
-(async()=>{loader.classList.add('show');await loadBatch();await show(0);})();
+(async()=>{
+  loader.classList.add('show');
+  await loadBatch();
+  // Pre-download first video before playing
+  if(vids.length>0) await downloadVideo(vids[0].video_id, vids[0].play);
+  await show(0);
+})();
 
 // ===== SWIPE =====
 let sx=0,sy=0;
