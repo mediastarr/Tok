@@ -202,14 +202,15 @@ async function loadBatch(){
     for(const v of items){
       if(seenIds.has(v.aweme_id)) continue;
 
-      // Skip image/slideshow posts (duration 0) and long videos (over 90s)
+      // Only US region videos
+      if(v.region && v.region!=='US') continue;
+
+      // Skip image/slideshow posts and long videos
       const dur=v.video?.duration||0;
-      if(dur===0||dur>90) continue;
+      if(dur===0||dur>60) continue;
 
       const urlObj=v.video?.play_addr||{};
       const videoUrl=Object.values(urlObj.url_list||{})[0];
-
-      // Skip non-video URLs (mp3 etc)
       if(!videoUrl||!videoUrl.includes('tiktokcdn')) continue;
       const avatarUrl=Object.values(v.author?.avatar_thumb?.url_list||{})[0]||'';
       seenIds.add(v.aweme_id);
@@ -225,7 +226,13 @@ async function loadBatch(){
       const video=document.createElement('video');
       video.playsInline=true;video.preload='none';video.muted=true;
       video.setAttribute('webkit-playsinline','true');
-      video.addEventListener('playing',()=>{if(reel.classList.contains('active'))loader.classList.remove('show');});
+      video.addEventListener('playing',()=>{
+        if(reel.classList.contains('active')){
+          loader.classList.remove('show');
+          // Unmute as soon as video plays if user has touched
+          if(userTouched && video.muted){video.muted=false;video.volume=1;}
+        }
+      });
       video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
       reel.appendChild(video);
       feed.appendChild(reel);
