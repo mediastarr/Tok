@@ -93,6 +93,25 @@ body.menu-active .menu-actions{display:flex}
   opacity:0;transition:opacity .3s;pointer-events:none;z-index:200;
 }
 .toast.show{opacity:1}
+
+/* Loading spinner */
+.loader{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.4);
+  z-index:4;
+  pointer-events:none;
+  opacity:0;transition:opacity .2s;
+}
+.loader.show{opacity:1}
+.spin{
+  width:32px;height:32px;
+  border:3px solid rgba(255,255,255,.2);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:sp .8s linear infinite;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -103,6 +122,7 @@ body.menu-active .menu-actions{display:flex}
     <div class="play-overlay">
       <div class="play-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
     </div>
+    <div class="loader" id="loader"><div class="spin"></div></div>
   </div>
 
   <div class="menu-info" id="menuInfo">
@@ -238,8 +258,8 @@ btnMore.addEventListener('click',(e)=>{
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.video_id,'_blank');
 });
 
-// ===== GET BEST VIDEO URL (wmplay is faster CDN, smaller file) =====
-function vidUrl(v){return v.wmplay||v.play;}
+// ===== GET BEST VIDEO URL =====
+function vidUrl(v){return v.play;}
 
 // ===== LOAD BATCH =====
 async function loadBatch(){
@@ -267,8 +287,16 @@ async function loadBatch(){
         video.preload='none';
         video.muted=true;
         video.setAttribute('webkit-playsinline','true');
-        // No auto-skip — user swipes manually if video is broken
-        video.addEventListener('playing',()=>{});
+        // Show spinner when buffering, hide when playing
+        video.addEventListener('waiting',()=>{
+          if(reel.classList.contains('active'))document.getElementById('loader').classList.add('show');
+        });
+        video.addEventListener('playing',()=>{
+          if(reel.classList.contains('active'))document.getElementById('loader').classList.remove('show');
+        });
+        video.addEventListener('canplay',()=>{
+          if(reel.classList.contains('active'))document.getElementById('loader').classList.remove('show');
+        });
         video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
         reel.appendChild(video);
         feed.appendChild(reel);
@@ -308,22 +336,25 @@ async function show(i){
     if(isActive){
       const url=vidUrl(vids[n]);
       if(!vid.src) vid.src=url;
+      vid.preload='auto';
 
       if(userTouched){vid.muted=false;vid.volume=1;}
       else{vid.muted=true;}
 
-      // Wait for enough data before playing to avoid choppy playback
+      // Show loader while buffering
+      const loader=document.getElementById('loader');
+
       function tryPlay(){
+        loader.classList.remove('show');
         vid.play().catch(()=>{
           vid.muted=true;
           vid.play().catch(()=>{});
         });
       }
       if(vid.readyState>=3){
-        // Already buffered enough
         tryPlay();
       }else{
-        // Wait for buffer
+        loader.classList.add('show');
         vid.addEventListener('canplay',function h(){
           vid.removeEventListener('canplay',h);
           tryPlay();
