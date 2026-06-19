@@ -133,7 +133,7 @@ body.menu-active .menu-actions{display:flex}
 
 <script>
 let vids=[], idx=0, loading=false;
-let menuOpen=false, videoSelected=false;
+let menuOpen=false;
 let cursor=0;
 const seenIds=new Set();
 const likedIds=new Set();
@@ -163,7 +163,6 @@ function toast(msg){
 function openMenu(){
   if(!vids[idx]||menuOpen) return;
   menuOpen=true;
-  videoSelected=false;
   card.classList.remove('selected');
 
   // Pause video
@@ -186,7 +185,6 @@ function openMenu(){
 function closeMenu(){
   if(!menuOpen) return;
   menuOpen=false;
-  videoSelected=false;
   document.body.classList.remove('menu-active');
   card.classList.remove('selected');
 
@@ -198,11 +196,8 @@ function closeMenu(){
 // ===== TAP ON CARD — uses click event, reliable on Neural Band =====
 card.addEventListener('click',(e)=>{
   e.stopPropagation();
-  if(!menuOpen){
-    openMenu();
-  }else if(videoSelected){
-    closeMenu();
-  }
+  if(!menuOpen) openMenu();
+  else closeMenu();
 });
 
 // ===== BUTTON HANDLERS =====
@@ -355,16 +350,10 @@ addEventListener('touchend',e=>{
   const dy=e.changedTouches[0].clientY-sy;
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
 
-  // Menu mode — swipe only (tap handled by click on card)
+  // Menu mode — swipe up = select video = close menu + resume
   if(menuOpen){
-    if(isSwipe){
-      if(dy<-50){
-        videoSelected=true;
-        card.classList.add('selected');
-      }else if(dy>50){
-        videoSelected=false;
-        card.classList.remove('selected');
-      }
+    if(isSwipe && dy<-50){
+      closeMenu();
     }
     return;
   }
@@ -381,10 +370,7 @@ addEventListener('touchend',e=>{
 addEventListener('keydown',e=>{
   if(!userTouched) userTouched=true;
   if(menuOpen){
-    if(e.key==='Escape'){closeMenu();return;}
-    if(e.key==='ArrowUp'){videoSelected=true;card.classList.add('selected');return;}
-    if(e.key==='ArrowDown'){videoSelected=false;card.classList.remove('selected');return;}
-    if(e.key==='Enter'&&videoSelected){closeMenu();return;}
+    if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}
     return;
   }
   if(e.key==='ArrowDown'){skipCount=0;show(idx+1);}
