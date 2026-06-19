@@ -152,7 +152,7 @@ const seenIds=new Set();
 const likedIds=new Set();
 const savedIds=new Set();
 let stallTimer=null, skipCount=0;
-const MAX_SKIPS=5, STALL_MS=4000;
+const MAX_SKIPS=5, STALL_MS=15000;
 let loadPending=false;
 let userTouched=false; // track first gesture for unmute
 
@@ -278,7 +278,6 @@ async function loadBatch(){
         video.muted=true;
         video.setAttribute('webkit-playsinline','true');
         video.addEventListener('error',()=>{if(reel.classList.contains('active'))show(idx+1);});
-        video.addEventListener('stalled',()=>{if(reel.classList.contains('active'))startStall();});
         video.addEventListener('playing',()=>{if(reel.classList.contains('active')){clearStall();skipCount=0;}});
         video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
         reel.appendChild(video);
@@ -326,8 +325,9 @@ async function show(i){
       vid.volume=1;
       startStall();
       vid.play().catch(()=>{
+        // Autoplay blocked — try muted, don't skip
         vid.muted=true;
-        vid.play().catch(()=>{if(skipCount<=MAX_SKIPS)show(idx+1);});
+        vid.play().catch(()=>{});
       });
       preloadAhead();
       if(n>=vids.length-4) loadBatch();
@@ -358,8 +358,8 @@ addEventListener('touchstart',e=>{
 addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-sx;
   const dy=e.changedTouches[0].clientY-sy;
-  const isTap=Math.abs(dx)<20&&Math.abs(dy)<20;
-  const isSwipeV=Math.abs(dy)>40&&Math.abs(dy)>Math.abs(dx);
+  const isTap=Math.abs(dx)<35&&Math.abs(dy)<35;
+  const isSwipeV=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
 
   // ---- MENU MODE ----
   if(menuOpen){
@@ -375,11 +375,11 @@ addEventListener('touchend',e=>{
       return;
     }
     if(isSwipeV){
-      if(dy<-40){
+      if(dy<-50){
         // Scroll up → select video
         videoSelected=true;
         card.classList.add('selected');
-      }else if(dy>40){
+      }else if(dy>50){
         // Scroll down → deselect
         videoSelected=false;
         card.classList.remove('selected');
@@ -395,7 +395,7 @@ addEventListener('touchend',e=>{
   }
   if(isSwipeV){
     skipCount=0;
-    if(dy>40) show(idx+1);   // swipe DOWN → next
+    if(dy>50) show(idx+1);   // swipe DOWN → next
     else show(idx-1);         // swipe UP → prev
   }
 },{passive:true});
