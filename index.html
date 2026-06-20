@@ -212,43 +212,82 @@ function cleanBlobs(){
   });
 }
 
-// ===== LOAD BATCH (SociaVault via Cloudflare Worker) =====
+// ===== LOAD BATCH — SociaVault first, falls back to TikWM when credits run out =====
 const TAGS=['fyp','foryou','comedy','dance','storytime','lifehacks','funny','viral'];
 let tagPos=0;
+let useFallback=false; // once true, stick with TikWM for the rest of the session
+let tikwmCursor=0;
+
+async function loadFromSociaVault(){
+  const tag=TAGS[tagPos%TAGS.length];
+  tagPos++;
+  const res=await fetch(PROXY+'/?tag='+encodeURIComponent(tag));
+  const data=await res.json();
+
+  if(data.success===false || data.error || !data.data?.aweme_list){
+    throw new Error('SociaVault unavailable: '+(data.error||data.message||'no data'));
+  }
+  return Object.values(data.data.aweme_list||{}).map(v=>{
+    const urlObj=v.video?.play_addr||{};
+    const videoUrl=Object.values(urlObj.url_list||{})[0];
+    return {
+      aweme_id:v.aweme_id,
+      videoUrl,
+      title:v.desc||'',
+      author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:Object.values(v.author?.avatar_thumb?.url_list||{})[0]||''},
+      digg_count:v.statistics?.digg_count||0,
+      duration:v.video?.duration||0,
+      region:v.region||''
+    };
+  });
+}
+
+async function loadFromTikWM(){
+  let url='https://www.tikwm.com/api/feed/list?region=US&count=20&language=en';
+  if(tikwmCursor) url+='&cursor='+tikwmCursor;
+  url+='&_='+Date.now()+Math.random();
+  const res=await fetch(url);
+  const data=await res.json();
+  if(data.cursor) tikwmCursor=data.cursor; else tikwmCursor+=20;
+  return (data.data||[]).map(v=>({
+    aweme_id:v.video_id,
+    videoUrl:v.play,
+    title:v.title||'',
+    author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
+    digg_count:v.digg_count||0,
+    duration:v.duration||15,
+    region:v.region||'US'
+  }));
+}
 
 async function loadBatch(){
   if(loading){loadPending=true;return 0;}
   loading=true;
   let totalAdded=0;
   try{
-    const tag=TAGS[tagPos%TAGS.length];
-    tagPos++;
-    const res=await fetch(PROXY+'/?tag='+encodeURIComponent(tag));
-    const data=await res.json();
+    let rawItems;
+    if(!useFallback){
+      try{
+        rawItems=await loadFromSociaVault();
+      }catch(e){
+        console.warn('SociaVault failed, switching to TikWM:',e.message);
+        useFallback=true;
+        rawItems=await loadFromTikWM();
+      }
+    }else{
+      rawItems=await loadFromTikWM();
+    }
+
     const feed=document.getElementById('feed');
-    const items=Object.values(data?.data?.aweme_list||{});
-    for(const v of items){
+    for(const v of rawItems){
       if(seenIds.has(v.aweme_id)) continue;
-
-      // Only US region videos
       if(v.region && v.region!=='US') continue;
+      if(v.duration===0||v.duration>60) continue;
+      if(!v.videoUrl||!v.videoUrl.includes('tiktokcdn')) continue;
 
-      // Skip image/slideshow posts and long videos
-      const dur=v.video?.duration||0;
-      if(dur===0||dur>60) continue;
-
-      const urlObj=v.video?.play_addr||{};
-      const videoUrl=Object.values(urlObj.url_list||{})[0];
-      if(!videoUrl||!videoUrl.includes('tiktokcdn')) continue;
-      const avatarUrl=Object.values(v.author?.avatar_thumb?.url_list||{})[0]||'';
       seenIds.add(v.aweme_id);
-      vids.push({
-        aweme_id:v.aweme_id,
-        videoUrl:videoUrl,
-        title:v.desc||'',
-        author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:avatarUrl},
-        digg_count:v.statistics?.digg_count||0
-      });
+      vids.push(v);
+
       const reel=document.createElement('div');
       reel.className='reel';
       const video=document.createElement('video');
@@ -257,7 +296,6 @@ async function loadBatch(){
       video.addEventListener('playing',()=>{
         if(reel.classList.contains('active')){
           loader.classList.remove('show');
-          // Unmute as soon as video plays if user has touched
           if(userTouched && video.muted){video.muted=false;video.volume=1;}
         }
       });
