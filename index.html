@@ -212,10 +212,10 @@ function cleanBlobs(){
   });
 }
 
-// ===== LOAD BATCH — 4-tier fallback: SociaVault -> RapidAPI -> Apify -> TikWM =====
+// ===== LOAD BATCH — 4-tier fallback: TikWM -> RapidAPI -> SociaVault -> Apify =====
 const TAGS=['fyp','foryou','comedy','dance','storytime','lifehacks','funny','viral'];
 let tagPos=0;
-let tier=0; // 0=SociaVault, 1=RapidAPI, 2=Apify, 3=TikWM (sticky once advanced)
+let tier=0; // 0=TikWM, 1=RapidAPI, 2=SociaVault, 3=Apify (sticky once advanced)
 let tikwmCursor=0;
 let rapidCursor=0;
 
@@ -305,10 +305,10 @@ async function loadBatch(){
     let rawItems;
     while(true){
       try{
-        if(tier===0) rawItems=await loadFromSociaVault();
+        if(tier===0) rawItems=await loadFromTikWM();
         else if(tier===1) rawItems=await loadFromRapidAPI();
-        else if(tier===2) rawItems=await loadFromApify();
-        else rawItems=await loadFromTikWM();
+        else if(tier===2) rawItems=await loadFromSociaVault();
+        else rawItems=await loadFromApify();
         break;
       }catch(e){
         console.warn('Tier '+tier+' failed:',e.message);
