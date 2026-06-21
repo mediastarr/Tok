@@ -212,18 +212,18 @@ function cleanBlobs(){
   });
 }
 
-// ===== LOAD BATCH — SociaVault first, falls back to TikWM when credits run out =====
+// ===== LOAD BATCH — 3-tier fallback: SociaVault -> RapidAPI -> TikWM =====
 const TAGS=['fyp','foryou','comedy','dance','storytime','lifehacks','funny','viral'];
 let tagPos=0;
-let useFallback=false; // once true, stick with TikWM for the rest of the session
+let tier=0; // 0=SociaVault, 1=RapidAPI, 2=TikWM (sticky once advanced)
 let tikwmCursor=0;
+let rapidCursor=0;
 
 async function loadFromSociaVault(){
   const tag=TAGS[tagPos%TAGS.length];
   tagPos++;
-  const res=await fetch(PROXY+'/?tag='+encodeURIComponent(tag));
+  const res=await fetch(PROXY+'/sociavault?tag='+encodeURIComponent(tag));
   const data=await res.json();
-
   if(data.success===false || data.error || !data.data?.aweme_list){
     throw new Error('SociaVault unavailable: '+(data.error||data.message||'no data'));
   }
@@ -240,6 +240,24 @@ async function loadFromSociaVault(){
       region:v.region||''
     };
   });
+}
+
+async function loadFromRapidAPI(){
+  const res=await fetch(PROXY+'/rapidapi?cursor='+rapidCursor);
+  const data=await res.json();
+  if(data.code!==0 || !data.data?.videos){
+    throw new Error('RapidAPI unavailable: '+(data.msg||'no data'));
+  }
+  rapidCursor=data.data.cursor||(rapidCursor+20);
+  return (data.data.videos||[]).map(v=>({
+    aweme_id:v.video_id,
+    videoUrl:v.play,
+    title:v.title||'',
+    author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
+    digg_count:v.digg_count||0,
+    duration:v.duration||15,
+    region:v.region||'US'
+  }));
 }
 
 async function loadFromTikWM(){
@@ -266,16 +284,17 @@ async function loadBatch(){
   let totalAdded=0;
   try{
     let rawItems;
-    if(!useFallback){
+    while(true){
       try{
-        rawItems=await loadFromSociaVault();
+        if(tier===0) rawItems=await loadFromSociaVault();
+        else if(tier===1) rawItems=await loadFromRapidAPI();
+        else rawItems=await loadFromTikWM();
+        break;
       }catch(e){
-        console.warn('SociaVault failed, switching to TikWM:',e.message);
-        useFallback=true;
-        rawItems=await loadFromTikWM();
+        console.warn('Tier '+tier+' failed:',e.message);
+        if(tier>=2) throw e; // all tiers exhausted
+        tier++;
       }
-    }else{
-      rawItems=await loadFromTikWM();
     }
 
     const feed=document.getElementById('feed');
@@ -304,7 +323,7 @@ async function loadBatch(){
       feed.appendChild(reel);
       totalAdded++;
     }
-  }catch(e){console.error('loadBatch error',e);}
+  }catch(e){console.error('loadBatch error — all sources failed',e);}
   loading=false;
   if(loadPending){loadPending=false;}
   return totalAdded;
