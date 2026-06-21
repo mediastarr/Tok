@@ -212,10 +212,10 @@ function cleanBlobs(){
   });
 }
 
-// ===== LOAD BATCH — 3-tier fallback: SociaVault -> RapidAPI -> TikWM =====
+// ===== LOAD BATCH — 4-tier fallback: SociaVault -> RapidAPI -> Apify -> TikWM =====
 const TAGS=['fyp','foryou','comedy','dance','storytime','lifehacks','funny','viral'];
 let tagPos=0;
-let tier=0; // 0=SociaVault, 1=RapidAPI, 2=TikWM (sticky once advanced)
+let tier=0; // 0=SociaVault, 1=RapidAPI, 2=Apify, 3=TikWM (sticky once advanced)
 let tikwmCursor=0;
 let rapidCursor=0;
 
@@ -260,6 +260,25 @@ async function loadFromRapidAPI(){
   }));
 }
 
+async function loadFromApify(){
+  const tag=TAGS[tagPos%TAGS.length];
+  tagPos++;
+  const res=await fetch(PROXY+'/apify?hashtag='+encodeURIComponent(tag));
+  const data=await res.json();
+  if(!Array.isArray(data)||data.length===0){
+    throw new Error('Apify unavailable: '+(data.error?.message||'no data'));
+  }
+  return data.map(v=>({
+    aweme_id:String(v.id||v.videoId||v.webVideoUrl||Math.random()),
+    videoUrl:v.videoUrl||v.mediaUrls?.[0]||v.videoMeta?.downloadAddr||'',
+    title:v.text||v.title||'',
+    author:{unique_id:v.authorMeta?.name||v.author?.uniqueId||'user',avatar:v.authorMeta?.avatar||''},
+    digg_count:v.diggCount||v.likes||0,
+    duration:v.videoMeta?.duration||v.duration||15,
+    region:'US'
+  }));
+}
+
 async function loadFromTikWM(){
   let url='https://www.tikwm.com/api/feed/list?region=US&count=20&language=en';
   if(tikwmCursor) url+='&cursor='+tikwmCursor;
@@ -288,11 +307,12 @@ async function loadBatch(){
       try{
         if(tier===0) rawItems=await loadFromSociaVault();
         else if(tier===1) rawItems=await loadFromRapidAPI();
+        else if(tier===2) rawItems=await loadFromApify();
         else rawItems=await loadFromTikWM();
         break;
       }catch(e){
         console.warn('Tier '+tier+' failed:',e.message);
-        if(tier>=2) throw e; // all tiers exhausted
+        if(tier>=3) throw e; // all tiers exhausted
         tier++;
       }
     }
