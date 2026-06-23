@@ -380,7 +380,7 @@ async function openProfile(){
     const handle=d.author?.unique_id;
     if(!handle) throw new Error('no handle');
     // CHANGE 1: fetch 10 videos instead of 9
-    const res=await fetch('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=10&cursor=0&_='+Date.now());
+    const res=await fetchFast('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=10&cursor=0&_='+Date.now());
     const data=await res.json();
     const videos=data?.data?.videos||[];
 
@@ -527,6 +527,13 @@ let tikwmCursor=0;
 let rapidCursor=0;
 let lastProfileTap=0;
 
+// Fast timeout fetch — tiers fail in 5s max instead of hanging
+function fetchFast(url,opts={},ms=5000){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),ms);
+  return fetch(url,{...opts,signal:ctrl.signal}).finally(()=>clearTimeout(t));
+}
+
 async function loadFromTikWM(){
   const endpoints=[
     'https://www.tikwm.com/api/feed/list?region=US&count=20&language=en'+(tikwmCursor?'&cursor='+tikwmCursor:''),
@@ -535,7 +542,7 @@ async function loadFromTikWM(){
   let lastErr;
   for(const base of endpoints){
     try{
-      const res=await fetch(base+'&_='+Date.now()+Math.random());
+      const res=await fetchFast(base+'&_='+Date.now()+Math.random());
       const data=await res.json();
       if(!data.data||!data.data.length) throw new Error('empty');
       if(data.cursor) tikwmCursor=data.cursor; else tikwmCursor+=20;
@@ -556,7 +563,7 @@ async function loadFromTikWM(){
 }
 
 async function loadFromTikWMProxy(){
-  const res=await fetch(PROXY+'/tikwm?cursor='+tikwmCursor);
+  const res=await fetchFast(PROXY+'/tikwm?cursor='+tikwmCursor);
   const data=await res.json();
   if(!data.data||!data.data.length) throw new Error('TikWM proxy: no data');
   if(data.cursor) tikwmCursor=data.cursor; else tikwmCursor+=20;
@@ -575,7 +582,7 @@ async function loadFromTikWMProxy(){
 }
 
 async function loadFromRapidAPI(){
-  const res=await fetch(PROXY+'/rapidapi?cursor='+rapidCursor);
+  const res=await fetchFast(PROXY+'/rapidapi?cursor='+rapidCursor);
   const data=await res.json();
   if(data.code!==0||!data.data?.videos) throw new Error('RapidAPI: '+(data.msg||'no data'));
   rapidCursor=data.data.cursor||(rapidCursor+20);
@@ -593,7 +600,7 @@ async function loadFromRapidAPI(){
 }
 
 async function loadFromSocialCrawl(){
-  const res=await fetch(PROXY+'/socialcrawl');
+  const res=await fetchFast(PROXY+'/socialcrawl');
   const data=await res.json();
   if(!data.success||!data.data?.posts) throw new Error('SocialCrawl: no data');
   return (data.data.posts||[]).map(v=>({
@@ -610,7 +617,7 @@ async function loadFromSocialCrawl(){
 }
 
 async function loadFromScrapeCreators(){
-  const res=await fetch(PROXY+'/scrapecreators');
+  const res=await fetchFast(PROXY+'/scrapecreators');
   const data=await res.json();
   // ScrapeCreators returns aweme_list similar to SociaVault
   const items=data?.aweme_list||data?.data?.aweme_list||[];
@@ -635,7 +642,7 @@ async function loadFromScrapeCreators(){
 
 async function loadFromSociaVault(){
   const tag=TAGS[tagPos%TAGS.length];tagPos++;
-  const res=await fetch(PROXY+'/sociavault?tag='+encodeURIComponent(tag));
+  const res=await fetchFast(PROXY+'/sociavault?tag='+encodeURIComponent(tag));
   const data=await res.json();
   if(data.success===false||data.error||!data.data?.aweme_list) throw new Error('SociaVault: '+(data.error||'no data'));
   return Object.values(data.data.aweme_list||{}).map(v=>{
@@ -656,7 +663,7 @@ async function loadFromSociaVault(){
 
 async function loadFromApify(){
   const tag=TAGS[tagPos%TAGS.length];tagPos++;
-  const res=await fetch(PROXY+'/apify?hashtag='+encodeURIComponent(tag));
+  const res=await fetchFast(PROXY+'/apify?hashtag='+encodeURIComponent(tag));
   const data=await res.json();
   if(!Array.isArray(data)||data.length===0) throw new Error('Apify: no data');
   return data.map(v=>({
