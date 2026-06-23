@@ -248,12 +248,30 @@ const PROXY='https://tiktok-proxy.mediastarr86.workers.dev';
 
 // ===== LOCALSTORAGE CACHE =====
 const CACHE_KEY='tiktok_vid_cache';
-const CACHE_MAX=30;
+const CACHE_MAX=50;
 function saveCache(items){
-  try{localStorage.setItem(CACHE_KEY,JSON.stringify(items.slice(-CACHE_MAX)));}catch(e){}
+  try{
+    // Keep a rolling pool of up to 50 videos, newest at end
+    const existing=loadCache();
+    const merged=[...existing,...items];
+    // Deduplicate by aweme_id
+    const seen=new Set();
+    const deduped=merged.filter(v=>{if(seen.has(v.aweme_id))return false;seen.add(v.aweme_id);return true;});
+    localStorage.setItem(CACHE_KEY,JSON.stringify(deduped.slice(-CACHE_MAX)));
+  }catch(e){}
 }
 function loadCache(){
-  try{const c=localStorage.getItem(CACHE_KEY);return c?JSON.parse(c):[];}catch(e){return [];}
+  try{
+    const c=localStorage.getItem(CACHE_KEY);
+    if(!c) return [];
+    const items=JSON.parse(c);
+    // Shuffle so you don't always see the same order
+    for(let i=items.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [items[i],items[j]]=[items[j],items[i]];
+    }
+    return items;
+  }catch(e){return [];}
 }
 
 // ===== LOAD BATCH — 5-tier: TikWM direct → TikWM proxy → RapidAPI → SociaVault → Apify =====
@@ -495,15 +513,17 @@ document.getElementById('splash').addEventListener('click',async(e)=>{
   document.body.classList.add('ready');
   loader.classList.add('show');
 
-  // Try loading from cache immediately for instant start
+  // Show cached videos instantly while fresh batch loads
   const cached=loadCache();
   if(cached.length>0){
     addToFeed(cached);
     await show(0);
   }
 
-  // Then load fresh batch in background
+  // Always fetch a fresh batch — adds new videos on top of cache
   await loadBatch();
+
+  // If no cache was available, show first video now
   if(cached.length===0) await show(0);
 
   const v=document.querySelector('.reel.active video');
