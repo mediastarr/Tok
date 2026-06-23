@@ -248,7 +248,7 @@ body.menu-active .menu-actions{display:flex}
 </div>
 
 <script>
-let vids=[],idx=0,loading=false,menuOpen=false;
+let vids=[],idx=0,loading=false,menuOpen=false,profileOpen=false;
 const seenIds=new Set(),likedIds=new Set(),savedIds=new Set();
 let loadPending=false,userTouched=false;
 
@@ -317,6 +317,7 @@ card.addEventListener('touchmove',()=>{clearTimeout(pressTimer);pressTimer=null;
 // Tap (short press) — open/close menu
 card.addEventListener('click',(e)=>{
   e.stopPropagation();
+  if(profileOpen) return; // ignore card taps when profile is showing
   if(wasLongPress) return;
   if(!menuOpen) openMenu(); else closeMenu();
 });
@@ -437,6 +438,7 @@ async function openProfile(){
   const thumbsEl=document.getElementById('profileVideos');
   thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Loading videos...</div>';
 
+  profileOpen=true;
   profileOverlay.classList.add('open');
 
   // Fetch creator's videos from TikWM
@@ -481,6 +483,7 @@ async function openProfile(){
 }
 
 function closeProfile(){
+  profileOpen=false;
   profileOverlay.classList.remove('open');
 }
 
@@ -493,7 +496,7 @@ window.playProfileVid=function(videoUrl,videoId){
   closeMenu();
 
   setTimeout(()=>{
-    profileOverlay.classList.remove('open'); // now safe to close
+    closeProfile(); // now safe — touchend already processed
     // Check if this video is already in the feed
     const existingIdx=vids.findIndex(v=>v.aweme_id===videoId);
     if(existingIdx!==-1){
@@ -856,13 +859,13 @@ let sx=0,sy=0;
 let lastProfileTap=0;
 
 addEventListener('touchstart',e=>{
-  if(profileOverlay.classList.contains('open')) return;
+  if(profileOpen) return;
   if(moreSheet.classList.contains('open')) return;
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;
 },{passive:true});
 
 addEventListener('touchend',e=>{
-  if(profileOverlay.classList.contains('open')) return; // ALWAYS block when profile open
+  if(profileOpen) return; // ALWAYS block when profile open
   if(moreSheet.classList.contains('open')) return;
   if(Date.now()-lastProfileTap<500) return;
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
