@@ -198,11 +198,11 @@ function closeMenu(){
   if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}
 }
 
-// ===== LONG PRESS → OPEN CREATOR PROFILE =====
+// ===== LONG PRESS → OPEN CREATOR PROFILE (touch-based for Neural Band) =====
 let pressTimer=null;
 let wasLongPress=false;
 
-card.addEventListener('pointerdown',()=>{
+card.addEventListener('touchstart',(e)=>{
   wasLongPress=false;
   pressTimer=setTimeout(()=>{
     wasLongPress=true;
@@ -210,14 +210,14 @@ card.addEventListener('pointerdown',()=>{
     const d=vids[idx];
     window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user'),'_blank');
   },600);
-});
-card.addEventListener('pointerup',()=>{clearTimeout(pressTimer);pressTimer=null;});
-card.addEventListener('pointerleave',()=>{clearTimeout(pressTimer);pressTimer=null;});
+},{passive:true});
+card.addEventListener('touchend',()=>{clearTimeout(pressTimer);pressTimer=null;});
+card.addEventListener('touchmove',()=>{clearTimeout(pressTimer);pressTimer=null;},{passive:true});
 
 // Tap (short press) — open/close menu
 card.addEventListener('click',(e)=>{
   e.stopPropagation();
-  if(wasLongPress) return; // was a long press, already handled
+  if(wasLongPress) return;
   if(!menuOpen) openMenu(); else closeMenu();
 });
 
