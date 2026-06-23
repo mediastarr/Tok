@@ -349,7 +349,7 @@ document.getElementById('moreProfile').addEventListener('click',()=>{
 const profileOverlay=document.getElementById('profileOverlay');
 profileOverlay.addEventListener('touchstart',e=>{e.stopPropagation();},{passive:false});
 profileOverlay.addEventListener('touchend',e=>{e.stopPropagation();},{passive:false});
-profileOverlay.addEventListener('touchmove',e=>{e.stopPropagation();},{passive:false});
+profileOverlay.addEventListener('touchmove',e=>{e.stopPropagation();e.preventDefault();},{passive:false});
 profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 async function openProfile(){
