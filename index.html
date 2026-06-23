@@ -437,10 +437,15 @@ async function openProfile(){
       const handler=(e)=>{
         e.stopPropagation();
         e.preventDefault();
-        window._profileTapped=true; // signal to swipe handler to ignore this touch
+        lastProfileTap=Date.now(); // set immediately, blocks swipe handler
+        window._profileTapped=true;
         playProfileVid(v.play, v.video_id);
       };
-      thumb.addEventListener('touchstart',(e)=>{e.stopPropagation();window._profileTapped=false;},{passive:false});
+      thumb.addEventListener('touchstart',(e)=>{
+        e.stopPropagation();
+        window._profileTapped=false;
+        lastProfileTap=Date.now(); // also set on touchstart to be safe
+      },{passive:false});
       thumb.addEventListener('click', handler);
       thumb.addEventListener('touchend', handler);
       thumbsEl.appendChild(thumb);
@@ -821,16 +826,20 @@ document.getElementById('splash').addEventListener('click',async(e)=>{
 
 // ===== SWIPE with smooth animation =====
 let sx=0,sy=0;
+let lastProfileTap=0; // timestamp of last profile thumb tap
+
 addEventListener('touchstart',e=>{
   if(profileOverlay.classList.contains('open')) return;
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;
 },{passive:true});
+
 addEventListener('touchend',e=>{
-  if(window._profileTapped){window._profileTapped=false;return;} // thumb was tapped
-  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
-  const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
+  // Block swipe for 300ms after a profile thumb was tapped
+  if(Date.now()-lastProfileTap<300) return;
   if(profileOverlay.classList.contains('open')) return;
   if(moreSheet.classList.contains('open')) return;
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+  const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
   if(isSwipe){
     if(dy>50) show(idx+1,true,1);
