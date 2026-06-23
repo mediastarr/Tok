@@ -422,11 +422,20 @@ async function openProfile(){
       return;
     }
 
-    thumbsEl.innerHTML=videos.slice(0,9).map(v=>
-      '<div class="profile-vid-thumb" onclick="playProfileVid(\''+v.play+'\',\''+v.video_id+'\')">'+
-      (v.cover?'<img src="'+v.cover+'" loading="lazy">':'')+
-      '</div>'
-    ).join('');
+    thumbsEl.innerHTML='';
+    videos.slice(0,9).forEach(v=>{
+      const thumb=document.createElement('div');
+      thumb.className='profile-vid-thumb';
+      if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
+      // Use both click and touchend for Neural Band compatibility
+      const handler=(e)=>{
+        e.stopPropagation();
+        playProfileVid(v.play, v.video_id);
+      };
+      thumb.addEventListener('click', handler);
+      thumb.addEventListener('touchend', handler, {passive:true});
+      thumbsEl.appendChild(thumb);
+    });
   }catch(e){
     thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';
   }
