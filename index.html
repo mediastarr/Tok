@@ -456,31 +456,67 @@ function closeProfile(){
 
 // Called when tapping a thumbnail in the profile grid
 window.playProfileVid=function(videoUrl,videoId){
+  window._profileTapped=true;
   // Close overlays first
   profileOverlay.classList.remove('open');
   closeMenu();
 
-  // Small delay so overlay close animation finishes before injecting video
   setTimeout(()=>{
-    if(!seenIds.has(videoId)){
-      seenIds.add(videoId);
-      const d=vids[idx];
-      const newVid={aweme_id:videoId,videoUrl,title:'',author:d.author,digg_count:0,share_count:0,comment_count:0,duration:30,region:'US',cover:''};
-      vids.splice(idx+1,0,newVid);
-      const reel=document.createElement('div');
-      reel.className='reel';
-      reel.style.top=(idx+1)*100+'%';
-      const video=document.createElement('video');
-      video.playsInline=true;video.preload='none';video.muted=true;
-      video.setAttribute('webkit-playsinline','true');
-      video.addEventListener('playing',()=>{if(reel.classList.contains('active')){loader.classList.remove('show');if(userTouched&&video.muted){video.muted=false;video.volume=1;}}});
-      video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
-      reel.appendChild(video);
-      feed.appendChild(reel);
-      document.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
+    // Check if this video is already in the feed
+    const existingIdx=vids.findIndex(v=>v.aweme_id===videoId);
+    if(existingIdx!==-1){
+      // Already in feed — just jump to it
+      show(existingIdx,true,1);
+      return;
     }
-    show(idx+1,true,1);
-  },50);
+
+    // Build new vid entry
+    const d=vids[idx];
+    const newVid={
+      aweme_id:videoId,
+      videoUrl:videoUrl,
+      title:'',
+      author:d.author,
+      digg_count:0,share_count:0,comment_count:0,
+      duration:60,region:'US',cover:''
+    };
+
+    // Insert right after current index
+    const insertAt=idx+1;
+    vids.splice(insertAt,0,newVid);
+
+    // Build reel DOM
+    const reel=document.createElement('div');
+    reel.className='reel';
+    const video=document.createElement('video');
+    video.playsInline=true;
+    video.preload='auto';
+    video.muted=true;
+    video.src=videoUrl; // set src immediately so it starts buffering
+    video.setAttribute('webkit-playsinline','true');
+    video.addEventListener('playing',()=>{
+      if(reel.classList.contains('active')){
+        loader.classList.remove('show');
+        if(userTouched&&video.muted){video.muted=false;video.volume=1;}
+      }
+    });
+    video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
+    reel.appendChild(video);
+
+    // Insert into DOM at correct position
+    const allReels=feed.querySelectorAll('.reel');
+    if(insertAt<allReels.length){
+      feed.insertBefore(reel,allReels[insertAt]);
+    }else{
+      feed.appendChild(reel);
+    }
+
+    // Reposition ALL reels by index
+    feed.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
+
+    // Now play it
+    show(insertAt,true,1);
+  },80);
 };
 
 document.getElementById('profileClose').addEventListener('click',closeProfile);
@@ -733,24 +769,27 @@ async function show(i,animate=false,dir=1){
     const vid=r.querySelector('video');
     if(isActive){
       loader.classList.add('show');
-      if(!vid.src) vid.src=vids[n].videoUrl;
+      if(!vid.src) vid.src=vids[n].videoUrl; // don't overwrite if already set
       vid.preload='auto';
       vid.muted=false;vid.volume=1;
       const tryPlay=()=>{
         vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
       };
       if(vid.readyState>=3) tryPlay();
-      else{
+      else if(vid.readyState>=2){
+        // Have enough data, just play
+        tryPlay();
+      }else{
         const h=()=>{vid.removeEventListener('canplay',h);tryPlay();};
         vid.addEventListener('canplay',h);
-        vid.load();
+        if(!vid.src) vid.load();
       }
       updateOverlay(vids[n]);
       preloadAhead();
       if(n>=vids.length-3) loadBatch();
     }else{
       vid.pause();
-      if(Math.abs(n-idx)>4) vid.removeAttribute('src');
+      if(Math.abs(n-idx)>6) vid.removeAttribute('src'); // increased from 4 to 6
     }
   });
 }
