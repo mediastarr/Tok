@@ -592,6 +592,47 @@ async function loadFromRapidAPI(){
   }));
 }
 
+async function loadFromSocialCrawl(){
+  const res=await fetch(PROXY+'/socialcrawl');
+  const data=await res.json();
+  if(!data.success||!data.data?.posts) throw new Error('SocialCrawl: no data');
+  return (data.data.posts||[]).map(v=>({
+    aweme_id:v.id||v.post_id||String(Math.random()),
+    videoUrl:v.media?.video_url||v.video_url||'',
+    title:v.caption||v.text||'',
+    author:{unique_id:v.author?.username||v.author?.handle||'user',avatar:v.author?.avatar||''},
+    digg_count:v.likes||v.engagement?.likes||0,
+    share_count:v.shares||v.engagement?.shares||0,
+    comment_count:v.comments||v.engagement?.comments||0,
+    duration:v.duration||15,
+    region:'US'
+  }));
+}
+
+async function loadFromScrapeCreators(){
+  const res=await fetch(PROXY+'/scrapecreators');
+  const data=await res.json();
+  // ScrapeCreators returns aweme_list similar to SociaVault
+  const items=data?.aweme_list||data?.data?.aweme_list||[];
+  if(!items.length) throw new Error('ScrapeCreators: no data');
+  return Object.values(items).map(v=>{
+    // Use no-watermark URL if available and no watermark, else play_addr
+    const urlList=v.video?.download_no_watermark_addr?.url_list||v.video?.play_addr?.url_list||{};
+    const videoUrl=Object.values(urlList)[0]||'';
+    return {
+      aweme_id:v.aweme_id,
+      videoUrl,
+      title:v.desc||'',
+      author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:Object.values(v.author?.avatar_thumb?.url_list||{})[0]||''},
+      digg_count:v.statistics?.digg_count||0,
+      share_count:v.statistics?.share_count||0,
+      comment_count:v.statistics?.comment_count||0,
+      duration:v.video?.duration||0,
+      region:v.region||''
+    };
+  });
+}
+
 async function loadFromSociaVault(){
   const tag=TAGS[tagPos%TAGS.length];tagPos++;
   const res=await fetch(PROXY+'/sociavault?tag='+encodeURIComponent(tag));
@@ -638,7 +679,10 @@ function addToFeed(items){
     if(seenIds.has(v.aweme_id)) continue;
     if(v.region&&v.region!=='US') continue;
     if(v.duration===0||v.duration>60) continue;
-    if(!v.videoUrl||!v.videoUrl.includes('tiktokcdn')) continue;
+    if(!v.videoUrl) continue;
+    // Reject audio-only URLs and empty strings, accept any tiktok CDN
+    if(v.videoUrl.endsWith('.mp3')) continue;
+    if(!v.videoUrl.startsWith('http')) continue;
     seenIds.add(v.aweme_id);
     vids.push(v);
     const reel=document.createElement('div');
@@ -672,11 +716,13 @@ async function loadBatch(){
         if(tier===0) rawItems=await loadFromTikWM();
         else if(tier===1) rawItems=await loadFromTikWMProxy();
         else if(tier===2) rawItems=await loadFromRapidAPI();
-        else if(tier===3) rawItems=await loadFromSociaVault();
+        else if(tier===3) rawItems=await loadFromSocialCrawl();
+        else if(tier===4) rawItems=await loadFromScrapeCreators();
+        else if(tier===5) rawItems=await loadFromSociaVault();
         else rawItems=await loadFromApify();
         break;
       }catch(e){
-        if(tier>=4) throw e;
+        if(tier>=6) throw e;
         tier++;
       }
     }
