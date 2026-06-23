@@ -339,7 +339,7 @@ function openProfile(){
         thumb.addEventListener('click',openVid);
         thumb.addEventListener('touchend',(e)=>{
           // Only fire if it wasn't a scroll (touch didn't move much)
-          if(Math.abs(thumbTouchDy)<15) openVid();
+          if(Math.abs(thumbTouchDy)<40) openVid();
         });
         thumbsEl_trackTouchForThumb(thumb);
         profileVideos.appendChild(thumb);
@@ -356,24 +356,35 @@ document.getElementById('profileClose').addEventListener('click',closeProfile);
 // Track thumb touch movement to distinguish tap vs scroll
 let thumbTouchDy=0, thumbTouchStartY=0;
 function thumbsEl_trackTouchForThumb(el){
-  el.addEventListener('touchstart',e=>{thumbTouchStartY=e.touches[0].clientY;thumbTouchDy=0;},{passive:true});
-  el.addEventListener('touchmove',e=>{thumbTouchDy=e.touches[0].clientY-thumbTouchStartY;},{passive:true});
+  el.addEventListener('touchstart',e=>{
+    thumbTouchStartY=e.touches[0].clientY;
+    thumbTouchDy=0;
+  },{passive:true});
+  el.addEventListener('touchmove',e=>{
+    thumbTouchDy=e.touches[0].clientY-thumbTouchStartY;
+  },{passive:true});
 }
 
+// Grid-level: stop all touch events from bubbling past the grid
+profileVideos.addEventListener('touchstart',e=>e.stopPropagation(),{passive:false});
+profileVideos.addEventListener('touchmove',e=>e.stopPropagation(),{passive:false});
+profileVideos.addEventListener('touchend',e=>e.stopPropagation(),{passive:false});
+
 // Profile overlay touch handling
-// — touchstart/touchend: always stopPropagation to block swipe handler
-// — touchmove: stopPropagation always, but only preventDefault outside the grid
-//   so the grid can scroll natively via touch-action:pan-y
+// Key insight: touches inside .profile-videos must NOT be intercepted at all
+// so browser can handle pan-y natively. Only block touches outside the grid.
 profileOverlay.addEventListener('touchstart',e=>{
+  if(e.target.closest('.profile-videos')) return; // let grid handle it
   e.stopPropagation();
+  e.preventDefault();
 },{passive:false});
 profileOverlay.addEventListener('touchmove',e=>{
+  if(e.target.closest('.profile-videos')) return; // let grid scroll natively
   e.stopPropagation();
-  if(!e.target.closest('.profile-videos')){
-    e.preventDefault(); // block scroll on non-grid areas
-  }
+  e.preventDefault();
 },{passive:false});
 profileOverlay.addEventListener('touchend',e=>{
+  if(e.target.closest('.profile-videos')) return; // let grid handle taps
   e.stopPropagation();
 },{passive:false});
 profileOverlay.addEventListener('click',e=>e.stopPropagation());
