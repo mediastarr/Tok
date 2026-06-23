@@ -25,11 +25,30 @@ body{color:#fff;font-family:-apple-system,system-ui,sans-serif;touch-action:none
 body.ready .card{pointer-events:auto}
 body.menu-active .card{height:48vh}
 
-#feed{position:absolute;inset:0}
-.reel{position:absolute;inset:0;display:none;background:#000}
-.reel.active{display:block}
+/* ===== FEED + SWIPE ANIMATION ===== */
+#feed{
+  position:absolute;inset:0;
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+}
+#feed.swiping{transition:none}
+.reel{position:absolute;left:0;width:100%;height:100%;background:#000}
 .reel video{width:100%;height:100%;object-fit:cover}
 
+/* ===== VIDEO INFO OVERLAY ===== */
+.vid-info{
+  position:absolute;left:0;right:0;bottom:0;
+  padding:48px 12px 14px;
+  background:linear-gradient(transparent,rgba(0,0,0,.7));
+  pointer-events:none;z-index:3;
+  transition:opacity .2s;
+}
+body.menu-active .vid-info{opacity:0}
+.vid-info-user{font-size:13px;font-weight:700;margin-bottom:3px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.vid-info-cap{font-size:12px;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vid-info-stats{font-size:11px;color:rgba(255,255,255,.7);margin-top:4px;display:flex;gap:10px}
+.vid-info-stats span{display:flex;align-items:center;gap:3px}
+
+/* ===== PLAY OVERLAY ===== */
 .play-overlay{
   position:absolute;inset:0;display:none;align-items:center;justify-content:center;
   background:rgba(0,0,0,.3);pointer-events:none;z-index:5;
@@ -41,13 +60,17 @@ body.menu-active .play-overlay{display:flex}
 }
 .play-circle svg{width:20px;height:20px;fill:rgba(255,255,255,.9);margin-left:2px}
 
+/* ===== MENU INFO ===== */
 .menu-info{display:none;flex-direction:column;align-items:flex-start;width:auto;max-width:80%;padding:0 4px}
 body.menu-active .menu-info{display:flex}
 .menu-user-row{font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
 .menu-avatar{width:22px;height:22px;border-radius:50%;background:#444;border:1px solid #666;overflow:hidden;flex-shrink:0}
 .menu-avatar img{width:100%;height:100%;object-fit:cover}
 .menu-cap{font-size:12px;color:#ccc;margin-top:2px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-stats{font-size:11px;color:#aaa;margin-top:4px;display:flex;gap:12px}
+.menu-stats span{display:flex;align-items:center;gap:3px}
 
+/* ===== ACTION BAR ===== */
 .menu-actions{display:none;gap:18px;padding:10px 24px;background:rgba(50,50,50,.8);border-radius:40px}
 body.menu-active .menu-actions{display:flex}
 .action-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -55,32 +78,28 @@ body.menu-active .menu-actions{display:flex}
 .action-btn.liked svg{fill:#fe2c55;opacity:1}
 .action-btn.saved svg{fill:#ffe135;opacity:1}
 
+/* ===== TOAST ===== */
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(60,60,60,.85);color:#fff;padding:7px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
 .toast.show{opacity:1}
 
+/* ===== LOADER ===== */
 .loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);z-index:4;pointer-events:none;opacity:0;transition:opacity .2s}
 .loader.show{opacity:1}
 .spin{width:32px;height:32px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+/* ===== SPLASH ===== */
 .splash{
-  position:fixed;inset:0;z-index:999;
-  background:#000;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
+  position:fixed;inset:0;z-index:999;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
   cursor:pointer;gap:16px;
 }
-.splash-icon{
-  width:72px;height:72px;border-radius:50%;
-  background:#fff;color:#000;
-  display:flex;align-items:center;justify-content:center;
-  font-size:28px;padding-left:4px;
-}
+.splash-icon{width:72px;height:72px;border-radius:50%;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-size:28px;padding-left:4px}
 .splash-text{color:#fff;font-size:15px;letter-spacing:.05em}
 </style>
 </head>
 <body>
-<!-- Tap to start splash -->
+
 <div class="splash" id="splash">
   <div class="splash-icon">▶</div>
   <div class="splash-text">Tap to Start</div>
@@ -89,18 +108,26 @@ body.menu-active .menu-actions{display:flex}
 <div class="stage">
   <div class="card" id="card">
     <div id="feed"></div>
+    <div class="vid-info" id="vidInfo">
+      <div class="vid-info-user" id="vidUser"></div>
+      <div class="vid-info-cap" id="vidCap"></div>
+      <div class="vid-info-stats" id="vidStats"></div>
+    </div>
     <div class="play-overlay">
       <div class="play-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
     </div>
     <div class="loader" id="loader"><div class="spin"></div></div>
   </div>
+
   <div class="menu-info" id="menuInfo">
     <div class="menu-user-row">
       <div class="menu-avatar" id="menuAvatar"></div>
       <span id="menuUser">@user</span>
     </div>
     <div class="menu-cap" id="menuCap"></div>
+    <div class="menu-stats" id="menuStats"></div>
   </div>
+
   <div class="menu-actions" id="menuActions">
     <div class="action-btn" id="btnLike" tabindex="0"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>
     <div class="action-btn" id="btnShare" tabindex="0"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
@@ -108,6 +135,7 @@ body.menu-active .menu-actions{display:flex}
     <div class="action-btn" id="btnMore" tabindex="0"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></div>
   </div>
 </div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -116,6 +144,7 @@ const seenIds=new Set(),likedIds=new Set(),savedIds=new Set();
 let loadPending=false,userTouched=false;
 
 const card=document.getElementById('card');
+const feed=document.getElementById('feed');
 const toastEl=document.getElementById('toast');
 const loader=document.getElementById('loader');
 const btnLike=document.getElementById('btnLike');
@@ -123,10 +152,26 @@ const btnShare=document.getElementById('btnShare');
 const btnSave=document.getElementById('btnSave');
 const btnMore=document.getElementById('btnMore');
 
+// ===== FORMAT NUMBERS =====
+function fmt(n){
+  if(!n) return '0';
+  return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'K':String(n);
+}
+
+// ===== TOAST =====
 let toastT=null;
 function toast(msg){clearTimeout(toastT);toastEl.textContent=msg;toastEl.classList.add('show');toastT=setTimeout(()=>toastEl.classList.remove('show'),1600);}
 
-// ===== MENU =====
+// ===== UPDATE VIDEO INFO OVERLAY =====
+function updateOverlay(d){
+  document.getElementById('vidUser').textContent='@'+(d.author?.unique_id||'user');
+  document.getElementById('vidCap').textContent=d.title||'';
+  document.getElementById('vidStats').innerHTML=
+    '<span>❤️ '+fmt(d.digg_count)+'</span>'+
+    '<span>↗️ '+fmt(d.share_count||0)+'</span>';
+}
+
+// ===== OPEN MENU =====
 function openMenu(){
   if(!vids[idx]||menuOpen) return;
   menuOpen=true;
@@ -137,6 +182,10 @@ function openMenu(){
   document.getElementById('menuCap').textContent=d.title||'';
   const av=document.getElementById('menuAvatar');
   av.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'';
+  document.getElementById('menuStats').innerHTML=
+    '<span>❤️ '+fmt(d.digg_count)+'</span>'+
+    '<span>↗️ '+fmt(d.share_count||0)+'</span>'+
+    '<span>💬 '+fmt(d.comment_count||0)+'</span>';
   btnLike.classList.toggle('liked',likedIds.has(d.aweme_id));
   btnSave.classList.toggle('saved',savedIds.has(d.aweme_id));
   document.body.classList.add('menu-active');
@@ -149,7 +198,25 @@ function closeMenu(){
   if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}
 }
 
-card.addEventListener('click',(e)=>{e.stopPropagation();if(!menuOpen)openMenu();else closeMenu();});
+// ===== LONG PRESS → OPEN CREATOR PROFILE =====
+let pressTimer=null;
+card.addEventListener('pointerdown',()=>{
+  pressTimer=setTimeout(()=>{
+    pressTimer=null;
+    if(!vids[idx]) return;
+    const d=vids[idx];
+    window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user'),'_blank');
+  },600);
+});
+card.addEventListener('pointerup',()=>{clearTimeout(pressTimer);});
+card.addEventListener('pointerleave',()=>{clearTimeout(pressTimer);});
+
+// Tap (short press) — open/close menu
+card.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  if(pressTimer===null) return; // was a long press, already handled
+  if(!menuOpen) openMenu(); else closeMenu();
+});
 
 // ===== BUTTONS =====
 btnLike.addEventListener('click',(e)=>{
@@ -173,118 +240,59 @@ btnMore.addEventListener('click',(e)=>{
   window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id,'_blank');
 });
 
-// ===== API via Cloudflare Worker (metadata only) =====
+// ===== API / PROXY =====
 const PROXY='https://tiktok-proxy.mediastarr86.workers.dev';
 
-// ===== BLOB CACHE =====
-const blobCache=new Map();
-const downloading=new Set();
-
-async function downloadVideo(id,url){
-  if(blobCache.has(id)) return blobCache.get(id);
-  if(downloading.has(id)) return url;
-  downloading.add(id);
-  try{
-    // Race the fetch against an 8s timeout — if slow, just stream directly
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),8000);
-    const res=await fetch(url,{mode:'cors',signal:controller.signal});
-    clearTimeout(timeout);
-    if(!res.ok) throw new Error('bad status');
-    const blob=await res.blob();
-    if(blob.size<1000) throw new Error('empty');
-    const blobUrl=URL.createObjectURL(blob);
-    blobCache.set(id,blobUrl);
-    downloading.delete(id);
-    return blobUrl;
-  }catch(e){
-    downloading.delete(id);
-    return url; // fall back to direct stream
-  }
+// ===== LOCALSTORAGE CACHE =====
+const CACHE_KEY='tiktok_vid_cache';
+const CACHE_MAX=30;
+function saveCache(items){
+  try{localStorage.setItem(CACHE_KEY,JSON.stringify(items.slice(-CACHE_MAX)));}catch(e){}
+}
+function loadCache(){
+  try{const c=localStorage.getItem(CACHE_KEY);return c?JSON.parse(c):[];}catch(e){return [];}
 }
 
-function cleanBlobs(){
-  vids.forEach((v,n)=>{
-    if(Math.abs(n-idx)>6&&blobCache.has(v.aweme_id)){
-      URL.revokeObjectURL(blobCache.get(v.aweme_id));
-      blobCache.delete(v.aweme_id);
-    }
-  });
-}
-
-// ===== LOAD BATCH — 4-tier fallback: TikWM -> RapidAPI -> SociaVault -> Apify =====
+// ===== LOAD BATCH — 5-tier: TikWM direct → TikWM proxy → RapidAPI → SociaVault → Apify =====
 const TAGS=['fyp','foryou','comedy','dance','storytime','lifehacks','funny','viral'];
 let tagPos=0;
-let tier=0; // 0=TikWM, 1=RapidAPI, 2=SociaVault, 3=Apify (sticky once advanced)
+let tier=0;
 let tikwmCursor=0;
 let rapidCursor=0;
 
-async function loadFromSociaVault(){
-  const tag=TAGS[tagPos%TAGS.length];
-  tagPos++;
-  const res=await fetch(PROXY+'/sociavault?tag='+encodeURIComponent(tag));
-  const data=await res.json();
-  if(data.success===false || data.error || !data.data?.aweme_list){
-    throw new Error('SociaVault unavailable: '+(data.error||data.message||'no data'));
-  }
-  return Object.values(data.data.aweme_list||{}).map(v=>{
-    const urlObj=v.video?.play_addr||{};
-    const videoUrl=Object.values(urlObj.url_list||{})[0];
-    return {
-      aweme_id:v.aweme_id,
-      videoUrl,
-      title:v.desc||'',
-      author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:Object.values(v.author?.avatar_thumb?.url_list||{})[0]||''},
-      digg_count:v.statistics?.digg_count||0,
-      duration:v.video?.duration||0,
-      region:v.region||''
-    };
-  });
-}
-
-async function loadFromRapidAPI(){
-  const res=await fetch(PROXY+'/rapidapi?cursor='+rapidCursor);
-  const data=await res.json();
-  if(data.code!==0 || !data.data?.videos){
-    throw new Error('RapidAPI unavailable: '+(data.msg||'no data'));
-  }
-  rapidCursor=data.data.cursor||(rapidCursor+20);
-  return (data.data.videos||[]).map(v=>({
-    aweme_id:v.video_id,
-    videoUrl:v.play,
-    title:v.title||'',
-    author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
-    digg_count:v.digg_count||0,
-    duration:v.duration||15,
-    region:v.region||'US'
-  }));
-}
-
-async function loadFromApify(){
-  const tag=TAGS[tagPos%TAGS.length];
-  tagPos++;
-  const res=await fetch(PROXY+'/apify?hashtag='+encodeURIComponent(tag));
-  const data=await res.json();
-  if(!Array.isArray(data)||data.length===0){
-    throw new Error('Apify unavailable: '+(data.error?.message||'no data'));
-  }
-  return data.map(v=>({
-    aweme_id:String(v.id||v.videoId||v.webVideoUrl||Math.random()),
-    videoUrl:v.videoUrl||v.mediaUrls?.[0]||v.videoMeta?.downloadAddr||'',
-    title:v.text||v.title||'',
-    author:{unique_id:v.authorMeta?.name||v.author?.uniqueId||'user',avatar:v.authorMeta?.avatar||''},
-    digg_count:v.diggCount||v.likes||0,
-    duration:v.videoMeta?.duration||v.duration||15,
-    region:'US'
-  }));
-}
-
 async function loadFromTikWM(){
-  let url='https://www.tikwm.com/api/feed/list?region=US&count=20&language=en';
-  if(tikwmCursor) url+='&cursor='+tikwmCursor;
-  url+='&_='+Date.now()+Math.random();
-  const res=await fetch(url);
+  // Try both TikWM endpoints
+  const endpoints=[
+    'https://www.tikwm.com/api/feed/list?region=US&count=20&language=en'+(tikwmCursor?'&cursor='+tikwmCursor:''),
+    'https://tikwm.com/api/feed/list?region=US&count=20&language=en'+(tikwmCursor?'&cursor='+tikwmCursor:''),
+  ];
+  let lastErr;
+  for(const base of endpoints){
+    try{
+      const res=await fetch(base+'&_='+Date.now()+Math.random());
+      const data=await res.json();
+      if(!data.data||!data.data.length) throw new Error('empty');
+      if(data.cursor) tikwmCursor=data.cursor; else tikwmCursor+=20;
+      return (data.data||[]).map(v=>({
+        aweme_id:v.video_id,
+        videoUrl:v.play,
+        title:v.title||'',
+        author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
+        digg_count:v.digg_count||0,
+        share_count:v.share_count||0,
+        comment_count:v.comment_count||0,
+        duration:v.duration||15,
+        region:v.region||'US'
+      }));
+    }catch(e){lastErr=e;}
+  }
+  throw lastErr;
+}
+
+async function loadFromTikWMProxy(){
+  const res=await fetch(PROXY+'/tikwm?cursor='+tikwmCursor);
   const data=await res.json();
+  if(!data.data||!data.data.length) throw new Error('TikWM proxy: no data');
   if(data.cursor) tikwmCursor=data.cursor; else tikwmCursor+=20;
   return (data.data||[]).map(v=>({
     aweme_id:v.video_id,
@@ -292,9 +300,99 @@ async function loadFromTikWM(){
     title:v.title||'',
     author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
     digg_count:v.digg_count||0,
+    share_count:v.share_count||0,
+    comment_count:v.comment_count||0,
     duration:v.duration||15,
     region:v.region||'US'
   }));
+}
+
+async function loadFromRapidAPI(){
+  const res=await fetch(PROXY+'/rapidapi?cursor='+rapidCursor);
+  const data=await res.json();
+  if(data.code!==0||!data.data?.videos) throw new Error('RapidAPI: '+(data.msg||'no data'));
+  rapidCursor=data.data.cursor||(rapidCursor+20);
+  return (data.data.videos||[]).map(v=>({
+    aweme_id:v.video_id,
+    videoUrl:v.play,
+    title:v.title||'',
+    author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
+    digg_count:v.digg_count||0,
+    share_count:v.share_count||0,
+    comment_count:v.comment_count||0,
+    duration:v.duration||15,
+    region:v.region||'US'
+  }));
+}
+
+async function loadFromSociaVault(){
+  const tag=TAGS[tagPos%TAGS.length];tagPos++;
+  const res=await fetch(PROXY+'/sociavault?tag='+encodeURIComponent(tag));
+  const data=await res.json();
+  if(data.success===false||data.error||!data.data?.aweme_list) throw new Error('SociaVault: '+(data.error||'no data'));
+  return Object.values(data.data.aweme_list||{}).map(v=>{
+    const videoUrl=Object.values(v.video?.play_addr?.url_list||{})[0];
+    return {
+      aweme_id:v.aweme_id,
+      videoUrl,
+      title:v.desc||'',
+      author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:Object.values(v.author?.avatar_thumb?.url_list||{})[0]||''},
+      digg_count:v.statistics?.digg_count||0,
+      share_count:v.statistics?.share_count||0,
+      comment_count:v.statistics?.comment_count||0,
+      duration:v.video?.duration||0,
+      region:v.region||''
+    };
+  });
+}
+
+async function loadFromApify(){
+  const tag=TAGS[tagPos%TAGS.length];tagPos++;
+  const res=await fetch(PROXY+'/apify?hashtag='+encodeURIComponent(tag));
+  const data=await res.json();
+  if(!Array.isArray(data)||data.length===0) throw new Error('Apify: no data');
+  return data.map(v=>({
+    aweme_id:String(v.id||v.videoId||Math.random()),
+    videoUrl:v.videoUrl||v.mediaUrls?.[0]||'',
+    title:v.text||v.title||'',
+    author:{unique_id:v.authorMeta?.name||'user',avatar:v.authorMeta?.avatar||''},
+    digg_count:v.diggCount||v.likes||0,
+    share_count:v.shareCount||0,
+    comment_count:v.commentCount||0,
+    duration:v.videoMeta?.duration||15,
+    region:'US'
+  }));
+}
+
+function addToFeed(items){
+  let added=0;
+  const feedEl=document.getElementById('feed');
+  for(const v of items){
+    if(seenIds.has(v.aweme_id)) continue;
+    if(v.region&&v.region!=='US') continue;
+    if(v.duration===0||v.duration>60) continue;
+    if(!v.videoUrl||!v.videoUrl.includes('tiktokcdn')) continue;
+    seenIds.add(v.aweme_id);
+    vids.push(v);
+    const reel=document.createElement('div');
+    reel.className='reel';
+    // Position each reel vertically stacked for swipe animation
+    reel.style.top=(vids.length-1)*100+'%';
+    const video=document.createElement('video');
+    video.playsInline=true;video.preload='none';video.muted=true;
+    video.setAttribute('webkit-playsinline','true');
+    video.addEventListener('playing',()=>{
+      if(reel.classList.contains('active')){
+        loader.classList.remove('show');
+        if(userTouched&&video.muted){video.muted=false;video.volume=1;}
+      }
+    });
+    video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
+    reel.appendChild(video);
+    feedEl.appendChild(reel);
+    added++;
+  }
+  return added;
 }
 
 async function loadBatch(){
@@ -306,43 +404,19 @@ async function loadBatch(){
     while(true){
       try{
         if(tier===0) rawItems=await loadFromTikWM();
-        else if(tier===1) rawItems=await loadFromRapidAPI();
-        else if(tier===2) rawItems=await loadFromSociaVault();
+        else if(tier===1) rawItems=await loadFromTikWMProxy();
+        else if(tier===2) rawItems=await loadFromRapidAPI();
+        else if(tier===3) rawItems=await loadFromSociaVault();
         else rawItems=await loadFromApify();
-        break;
+        break; // success — stay on this tier next time
       }catch(e){
-        console.warn('Tier '+tier+' failed:',e.message);
-        if(tier>=3) throw e; // all tiers exhausted
-        tier++;
+        if(tier>=4) throw e; // all tiers exhausted
+        tier++; // advance permanently to next tier
       }
     }
-
-    const feed=document.getElementById('feed');
-    for(const v of rawItems){
-      if(seenIds.has(v.aweme_id)) continue;
-      if(v.region && v.region!=='US') continue;
-      if(v.duration===0||v.duration>60) continue;
-      if(!v.videoUrl||!v.videoUrl.includes('tiktokcdn')) continue;
-
-      seenIds.add(v.aweme_id);
-      vids.push(v);
-
-      const reel=document.createElement('div');
-      reel.className='reel';
-      const video=document.createElement('video');
-      video.playsInline=true;video.preload='none';video.muted=true;
-      video.setAttribute('webkit-playsinline','true');
-      video.addEventListener('playing',()=>{
-        if(reel.classList.contains('active')){
-          loader.classList.remove('show');
-          if(userTouched && video.muted){video.muted=false;video.volume=1;}
-        }
-      });
-      video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
-      reel.appendChild(video);
-      feed.appendChild(reel);
-      totalAdded++;
-    }
+    totalAdded=addToFeed(rawItems);
+    // Cache the latest batch for instant next load
+    saveCache(vids.map(v=>({...v})));
   }catch(e){console.error('loadBatch error — all sources failed',e);}
   loading=false;
   if(loadPending){loadPending=false;}
@@ -360,80 +434,80 @@ function preloadAhead(){
   }
 }
 
-// ===== SHOW VIDEO =====
-async function show(i){
+// ===== SHOW VIDEO with smooth swipe animation =====
+async function show(i,animate=false,dir=1){
   if(i>=vids.length){await loadBatch();if(i>=vids.length)i=vids.length-1;}
   if(i<0)i=0;
   idx=i;
   const reels=document.querySelectorAll('.reel');
+
+  if(animate){
+    // Slide the feed container: each reel is 100% tall, stacked vertically
+    // So to show reel N we translate Y to -N*100%
+    feed.classList.add('swiping');
+    // Shift instantly to current+dir position, then animate to current
+    feed.style.transform='translateY('+((-(idx-dir)*100))+'%)';
+    feed.classList.remove('swiping');
+    // Trigger reflow
+    feed.getBoundingClientRect();
+    feed.classList.remove('swiping');
+    feed.style.transform='translateY('+(-(idx*100))+'%)';
+  }else{
+    feed.style.transform='translateY('+(-(idx*100))+'%)';
+  }
+
   reels.forEach((r,n)=>{
     const isActive=n===idx;
     r.classList.toggle('active',isActive);
     const vid=r.querySelector('video');
     if(isActive){
       loader.classList.add('show');
-      vid.src=vids[n].videoUrl;
+      if(!vid.src) vid.src=vids[n].videoUrl;
       vid.preload='auto';
-      vid.muted=false;
-      vid.volume=1;
-
-      // Wait until at least 3 seconds are buffered before playing
-      // This prevents the constant stutter from starting too early
-      const startWhenReady=()=>{
-        const tryPlay=()=>{
-          vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
-        };
-
-        if(vid.readyState>=3){
-          // HAVE_FUTURE_DATA — enough to start
-          tryPlay();
-        }else if(vid.buffered.length>0 && vid.buffered.end(0)>=3){
-          // 3+ seconds buffered
-          tryPlay();
-        }else{
-          // Wait for more data
-          const onProgress=()=>{
-            if(vid.buffered.length>0 && vid.buffered.end(0)>=3){
-              vid.removeEventListener('progress',onProgress);
-              vid.removeEventListener('canplaythrough',onReady);
-              tryPlay();
-            }
-          };
-          const onReady=()=>{
-            vid.removeEventListener('progress',onProgress);
-            vid.removeEventListener('canplaythrough',onReady);
-            tryPlay();
-          };
-          vid.addEventListener('progress',onProgress);
-          vid.addEventListener('canplaythrough',onReady);
-          vid.load();
-        }
+      vid.muted=false;vid.volume=1;
+      const tryPlay=()=>{
+        vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
       };
-      startWhenReady();
-
+      if(vid.readyState>=3) tryPlay();
+      else{
+        const h=()=>{vid.removeEventListener('canplay',h);tryPlay();};
+        vid.addEventListener('canplay',h);
+        vid.load();
+      }
+      updateOverlay(vids[n]);
       preloadAhead();
-      if(n>=vids.length-3)loadBatch();
+      if(n>=vids.length-3) loadBatch();
     }else{
       vid.pause();
-      vid.removeAttribute('src');
+      if(Math.abs(n-idx)>4) vid.removeAttribute('src');
     }
   });
 }
 
-// ===== SPLASH → START WITH SOUND =====
-document.getElementById('splash').addEventListener('click', async (e)=>{
+// ===== SPLASH =====
+document.getElementById('splash').addEventListener('click',async(e)=>{
   e.stopPropagation();
   userTouched=true;
   document.getElementById('splash').style.display='none';
   document.body.classList.add('ready');
   loader.classList.add('show');
+
+  // Try loading from cache immediately for instant start
+  const cached=loadCache();
+  if(cached.length>0){
+    addToFeed(cached);
+    await show(0);
+  }
+
+  // Then load fresh batch in background
   await loadBatch();
-  await show(0);
+  if(cached.length===0) await show(0);
+
   const v=document.querySelector('.reel.active video');
   if(v){v.muted=false;v.volume=1;}
 },{once:true});
 
-// ===== SWIPE =====
+// ===== SWIPE with smooth animation =====
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;
@@ -442,15 +516,18 @@ addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
-  if(isSwipe){if(dy>50)show(idx+1);else show(idx-1);}
+  if(isSwipe){
+    if(dy>50) show(idx+1,true,1);   // swipe down → next
+    else show(idx-1,true,-1);        // swipe up → prev
+  }
 },{passive:true});
 
 // ===== KEYBOARD =====
 addEventListener('keydown',e=>{
   if(!userTouched)userTouched=true;
   if(menuOpen){if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}return;}
-  if(e.key==='ArrowDown')show(idx+1);
-  if(e.key==='ArrowUp')show(idx-1);
+  if(e.key==='ArrowDown') show(idx+1,true,1);
+  if(e.key==='ArrowUp') show(idx-1,true,-1);
 });
 </script>
 </body>
