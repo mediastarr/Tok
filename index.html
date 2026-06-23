@@ -126,7 +126,9 @@ body.menu-active .menu-actions{display:flex}
 }
 .profile-vid-thumb{
   aspect-ratio:9/16;background:#222;border-radius:4px;overflow:hidden;
+  cursor:pointer;-webkit-tap-highlight-color:rgba(255,255,255,.1);
 }
+.profile-vid-thumb:active{opacity:.7}
 .profile-vid-thumb img{width:100%;height:100%;object-fit:cover}
 /* ===== MORE MENU BOTTOM SHEET ===== */
 .more-sheet{
@@ -390,33 +392,76 @@ async function openProfile(){
   if(!vids[idx]) return;
   const d=vids[idx];
 
-  // Set basic info we already have
+  // Set basic info immediately
   document.getElementById('profileName').textContent=d.author?.nickname||d.author?.unique_id||'User';
   document.getElementById('profileHandle').textContent='@'+(d.author?.unique_id||'user');
-  document.getElementById('profileStats').innerHTML='<div class="profile-stat"><div class="profile-stat-val">—</div><div class="profile-stat-lbl">Followers</div></div><div class="profile-stat"><div class="profile-stat-val">'+fmt(d.digg_count)+'</div><div class="profile-stat-lbl">Likes (this video)</div></div>';
+  document.getElementById('profileStats').innerHTML=
+    '<div class="profile-stat"><div class="profile-stat-val">—</div><div class="profile-stat-lbl">Followers</div></div>'+
+    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.digg_count)+'</div><div class="profile-stat-lbl">Likes</div></div>'+
+    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.comment_count||0)+'</div><div class="profile-stat-lbl">Comments</div></div>';
 
-  // Set avatar
   const avEl=document.getElementById('profileAv');
-  if(d.author?.avatar){
-    avEl.innerHTML='<img src="'+d.author.avatar+'">';
-  }else{
-    avEl.innerHTML='<div class="profile-av-placeholder">👤</div>';
-  }
+  avEl.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'<div class="profile-av-placeholder">👤</div>';
 
-  // Show videos from this creator we've already loaded
-  const creatorVids=vids.filter(v=>v.author?.unique_id===d.author?.unique_id);
+  // Show loading state in thumbs grid
   const thumbsEl=document.getElementById('profileVideos');
-  thumbsEl.innerHTML=creatorVids.slice(0,6).map(v=>{
-    const cover=v.cover||'';
-    return '<div class="profile-vid-thumb">'+(cover?'<img src="'+cover+'">':'')+'</div>';
-  }).join('');
+  thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Loading videos...</div>';
 
   profileOverlay.classList.add('open');
+
+  // Fetch creator's videos from TikWM
+  try{
+    const handle=d.author?.unique_id;
+    if(!handle) throw new Error('no handle');
+    const res=await fetch('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=9&cursor=0&_='+Date.now());
+    const data=await res.json();
+    const videos=data?.data?.videos||[];
+
+    if(videos.length===0){
+      thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos found</div>';
+      return;
+    }
+
+    thumbsEl.innerHTML=videos.slice(0,9).map(v=>
+      '<div class="profile-vid-thumb" onclick="playProfileVid(\''+v.play+'\',\''+v.video_id+'\')">'+
+      (v.cover?'<img src="'+v.cover+'" loading="lazy">':'')+
+      '</div>'
+    ).join('');
+  }catch(e){
+    thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';
+  }
 }
 
 function closeProfile(){
   profileOverlay.classList.remove('open');
 }
+
+// Called when tapping a thumbnail in the profile grid
+window.playProfileVid=function(videoUrl,videoId){
+  closeProfile();
+  closeMenu();
+  // Add this video to the front of the queue and play it
+  if(!seenIds.has(videoId)){
+    seenIds.add(videoId);
+    const d=vids[idx]; // borrow author info from current video
+    const newVid={aweme_id:videoId,videoUrl,title:'',author:d.author,digg_count:0,share_count:0,comment_count:0,duration:30,region:'US',cover:''};
+    vids.splice(idx+1,0,newVid);
+    // Add reel DOM element at correct position
+    const reel=document.createElement('div');
+    reel.className='reel';
+    reel.style.top=(idx+1)*100+'%';
+    const video=document.createElement('video');
+    video.playsInline=true;video.preload='none';video.muted=true;
+    video.setAttribute('webkit-playsinline','true');
+    video.addEventListener('playing',()=>{if(reel.classList.contains('active')){loader.classList.remove('show');if(userTouched&&video.muted){video.muted=false;video.volume=1;}}});
+    video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
+    reel.appendChild(video);
+    feed.appendChild(reel);
+    // Reposition all reels after insertion point
+    document.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
+  }
+  show(idx+1,true,1);
+};
 
 document.getElementById('profileClose').addEventListener('click',closeProfile);
 
