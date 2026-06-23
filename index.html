@@ -200,21 +200,24 @@ function closeMenu(){
 
 // ===== LONG PRESS → OPEN CREATOR PROFILE =====
 let pressTimer=null;
+let wasLongPress=false;
+
 card.addEventListener('pointerdown',()=>{
+  wasLongPress=false;
   pressTimer=setTimeout(()=>{
-    pressTimer=null;
+    wasLongPress=true;
     if(!vids[idx]) return;
     const d=vids[idx];
     window.open('https://www.tiktok.com/@'+(d.author?.unique_id||'user'),'_blank');
   },600);
 });
-card.addEventListener('pointerup',()=>{clearTimeout(pressTimer);});
-card.addEventListener('pointerleave',()=>{clearTimeout(pressTimer);});
+card.addEventListener('pointerup',()=>{clearTimeout(pressTimer);pressTimer=null;});
+card.addEventListener('pointerleave',()=>{clearTimeout(pressTimer);pressTimer=null;});
 
 // Tap (short press) — open/close menu
 card.addEventListener('click',(e)=>{
   e.stopPropagation();
-  if(pressTimer===null) return; // was a long press, already handled
+  if(wasLongPress) return; // was a long press, already handled
   if(!menuOpen) openMenu(); else closeMenu();
 });
 
