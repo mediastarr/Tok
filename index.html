@@ -487,11 +487,13 @@ function closeProfile(){
 // Called when tapping a thumbnail in the profile grid
 window.playProfileVid=function(videoUrl,videoId){
   window._profileTapped=true;
-  // Close overlays first
-  profileOverlay.classList.remove('open');
+  lastProfileTap=Date.now();
+  // Don't close overlay yet — keep it open so swipe handler stays blocked
+  // Close it inside the setTimeout after the touchend has already fired
   closeMenu();
 
   setTimeout(()=>{
+    profileOverlay.classList.remove('open'); // now safe to close
     // Check if this video is already in the feed
     const existingIdx=vids.findIndex(v=>v.aweme_id===videoId);
     if(existingIdx!==-1){
@@ -851,18 +853,18 @@ document.getElementById('splash').addEventListener('click',async(e)=>{
 
 // ===== SWIPE with smooth animation =====
 let sx=0,sy=0;
-let lastProfileTap=0; // timestamp of last profile thumb tap
+let lastProfileTap=0;
 
 addEventListener('touchstart',e=>{
   if(profileOverlay.classList.contains('open')) return;
+  if(moreSheet.classList.contains('open')) return;
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;
 },{passive:true});
 
 addEventListener('touchend',e=>{
-  // Block swipe for 300ms after a profile thumb was tapped
-  if(Date.now()-lastProfileTap<500) return;
-  if(profileOverlay.classList.contains('open')) return;
+  if(profileOverlay.classList.contains('open')) return; // ALWAYS block when profile open
   if(moreSheet.classList.contains('open')) return;
+  if(Date.now()-lastProfileTap<500) return;
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
