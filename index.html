@@ -89,20 +89,19 @@ body.menu-active .menu-actions{display:flex}
   gap:3px;
   margin-top:10px;
   flex:1;
-  min-height:0; /* needed for flex child to scroll */
-  overflow-y:scroll;
+  min-height:0;
+  overflow-y:auto;
   overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-  touch-action:pan-y; /* native vertical scroll */
 }
 .profile-vid-thumb{
   aspect-ratio:9/16;background:#222;border-radius:4px;overflow:hidden;
   cursor:pointer;-webkit-tap-highlight-color:rgba(255,255,255,.2);flex-shrink:0;
 }
+.profile-vid-thumb:focus{outline:2px solid #fff;outline-offset:1px;opacity:.9}
 .profile-vid-thumb:active{opacity:.6}
 .profile-vid-thumb img{width:100%;height:100%;object-fit:cover;pointer-events:none;display:block}
 .profile-close{flex-shrink:0;margin-top:8px;padding:8px 28px;border-radius:20px;background:rgba(255,255,255,.12);font-size:12px;cursor:pointer;touch-action:auto}
+.profile-close:focus{outline:2px solid #fff;outline-offset:2px}
 
 /* MORE SHEET */
 .more-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:90%;max-width:360px;background:#1a1a1a;border-radius:18px 18px 0 0;z-index:400;padding:12px 0 24px;transition:transform .3s cubic-bezier(.4,0,.2,1)}
@@ -160,7 +159,7 @@ body.menu-active .menu-actions{display:flex}
     <div class="profile-stats" id="profileStats"></div>
   </div>
   <div class="profile-videos" id="profileVideos"></div>
-  <div class="profile-close" id="profileClose">Close</div>
+  <div class="profile-close" id="profileClose" tabindex="0">Close</div>
 </div>
 
 <div class="more-backdrop" id="moreBackdrop"></div>
@@ -248,17 +247,20 @@ function openProfile(){
       const videos=data?.data?.videos||[];
       if(!videos.length){profileVideos.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos</div>';return;}
       profileVideos.innerHTML='';
-      videos.forEach(v=>{
+      videos.forEach((v,i)=>{
         const thumb=document.createElement('div');
         thumb.className='profile-vid-thumb';
+        thumb.tabIndex=0;
+        thumb.setAttribute('role','button');
         if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
-        // Tap detection: time-based (< 300ms = tap, not scroll)
-        let tapStart=0;
-        thumb.addEventListener('touchstart',()=>{tapStart=Date.now();},{passive:true});
-        thumb.addEventListener('touchend',()=>{
-          if(Date.now()-tapStart<300) playProfileVid(v.play,v.video_id);
-        },{passive:true});
-        thumb.addEventListener('click',()=>playProfileVid(v.play,v.video_id));
+        // Exactly like the like/close buttons — just click
+        thumb.addEventListener('click',(e)=>{
+          e.stopPropagation();
+          playProfileVid(v.play,v.video_id);
+        });
+        thumb.addEventListener('keydown',(e)=>{
+          if(e.key==='Enter'||e.key===' '){e.preventDefault();playProfileVid(v.play,v.video_id);}
+        });
         profileVideos.appendChild(thumb);
       });
     }).catch(()=>{profileVideos.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load</div>';});
@@ -270,6 +272,7 @@ function closeProfile(){
 }
 document.getElementById('profileClose').addEventListener('click',closeProfile);
 document.getElementById('profileClose').addEventListener('touchend',(e)=>{e.preventDefault();closeProfile();});
+document.getElementById('profileClose').addEventListener('keydown',(e)=>{if(e.key==='Enter'||e.key===' ')closeProfile();});
 
 function playProfileVid(videoUrl,videoId){
   // Close profile, stay on same feed position
@@ -297,20 +300,10 @@ function playProfileVid(videoUrl,videoId){
   },50);
 }
 
-// Profile overlay touch handling
-// touchstart: ONLY stopPropagation — never preventDefault (kills tap sequence)
-// touchmove: preventDefault outside grid (blocks swipe), let grid scroll natively
-// touchend: ONLY stopPropagation
-profileOverlay.addEventListener('touchstart',e=>{
-  e.stopPropagation();
-},{passive:false});
-profileOverlay.addEventListener('touchmove',e=>{
-  e.stopPropagation();
-  if(!e.target.closest('.profile-videos')) e.preventDefault();
-},{passive:false});
-profileOverlay.addEventListener('touchend',e=>{
-  e.stopPropagation();
-},{passive:false});
+// Profile overlay - simple block, no preventDefault on touchstart
+profileOverlay.addEventListener('touchstart',e=>{e.stopPropagation();},{passive:false});
+profileOverlay.addEventListener('touchmove',e=>{e.stopPropagation();e.preventDefault();},{passive:false});
+profileOverlay.addEventListener('touchend',e=>{e.stopPropagation();},{passive:false});
 profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 // ===== LONG PRESS → PROFILE =====
