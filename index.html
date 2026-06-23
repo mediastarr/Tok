@@ -707,6 +707,7 @@ async function loadBatch(){
   if(loading){loadPending=true;return 0;}
   loading=true;
   let totalAdded=0;
+  const startTier=tier;
   try{
     let rawItems;
     while(true){
@@ -720,15 +721,16 @@ async function loadBatch(){
         else rawItems=await loadFromApify();
         break;
       }catch(e){
-        if(tier>=6) throw e;
         tier++;
+        if(tier>6){tier=0;} // cycle back to tier 0 instead of dying
+        if(tier===startTier) throw new Error('all sources exhausted'); // full cycle with no success
       }
     }
     totalAdded=addToFeed(rawItems);
     saveCache(vids.map(v=>({...v})));
   }catch(e){console.error('loadBatch error — all sources failed',e);}
   loading=false;
-  if(loadPending){loadPending=false;}
+  if(loadPending){loadPending=false;loadBatch();} // drain pending request
   return totalAdded;
 }
 
@@ -748,13 +750,21 @@ function preloadAhead(){
   }
 }
 
-// FIX 3: skip timer + robust canplay handler
 let currentSkipTimer=null;
 
 async function show(i,animate=false,dir=1){
-  if(i>=vids.length){await loadBatch();if(i>=vids.length)i=vids.length-1;}
-  if(i<0)i=0;
+  // If we're at or past the end, load more first
+  if(i>=vids.length){
+    loader.classList.add('show');
+    await loadBatch();
+  }
+  // If still no videos after load, stay put
+  if(vids.length===0) return;
+  if(i>=vids.length) i=vids.length-1;
+  if(i<0) i=0;
   idx=i;
+
+  // Re-query AFTER loadBatch so newly added reels are included
   const reels=document.querySelectorAll('.reel');
 
   // Clear any pending skip timer from previous video
@@ -790,13 +800,13 @@ async function show(i,animate=false,dir=1){
         vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
       };
 
-      // FIX 3: 3-second hard timeout — auto-skip if video never loads
+      // 4-second hard timeout — auto-skip if video never loads
       currentSkipTimer=setTimeout(()=>{
         if(!played){
           console.warn('Video stuck, skipping:',vid.src);
           show(idx+1,true,1);
         }
-      },3000);
+      },4000);
 
       if(vid.readyState>=3){
         tryPlay();
@@ -811,7 +821,8 @@ async function show(i,animate=false,dir=1){
 
       updateOverlay(vids[n]);
       preloadAhead();
-      if(n>=vids.length-3) loadBatch();
+      // Trigger next batch earlier — when 5 videos remain
+      if(n>=vids.length-5) loadBatch();
     }else{
       vid.pause();
       if(Math.abs(n-idx)>6) vid.removeAttribute('src');
