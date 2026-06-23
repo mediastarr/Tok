@@ -354,6 +354,9 @@ profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 async function openProfile(){
   if(!vids[idx]) return;
+  // Freeze background video
+  const bgVid=document.querySelector('.reel.active video');
+  if(bgVid) bgVid.pause();
   const d=vids[idx];
 
   document.getElementById('profileName').textContent=d.author?.nickname||d.author?.unique_id||'User';
@@ -413,6 +416,9 @@ async function openProfile(){
 
 function closeProfile(){
   profileOverlay.classList.remove('open');
+  // Resume background video
+  const bgVid=document.querySelector('.reel.active video');
+  if(bgVid){bgVid.muted=false;bgVid.volume=1;bgVid.play().catch(()=>{});}
 }
 
 window.playProfileVid=function(videoUrl,videoId){
@@ -761,6 +767,7 @@ addEventListener('touchstart',e=>{
 },{passive:true});
 
 addEventListener('touchend',e=>{
+  if(profileOverlay.classList.contains('open')) return;
   if(Date.now()-lastProfileTap<300) return;
   if(profileOverlay.classList.contains('open')) return;
   if(moreSheet.classList.contains('open')) return;
