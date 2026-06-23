@@ -394,12 +394,14 @@ async function openProfile(){
       const thumb=document.createElement('div');
       thumb.className='profile-vid-thumb';
       if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
+      // Use wmplay (no watermark, direct CDN) or fall back to play
+      const videoUrl=v.wmplay||v.play;
       const handler=(e)=>{
         e.stopPropagation();
         e.preventDefault();
         lastProfileTap=Date.now();
         window._profileTapped=true;
-        playProfileVid(v.play, v.video_id);
+        playProfileVid(videoUrl, v.video_id);
       };
       thumb.addEventListener('touchstart',(e)=>{
         e.stopPropagation();
@@ -444,7 +446,8 @@ window.playProfileVid=function(videoUrl,videoId){
       title:'',
       author:d.author,
       digg_count:0,share_count:0,comment_count:0,
-      duration:60,region:'US',cover:''
+      duration:60,region:'US',cover:'',
+      _fromProfile:true // skip CDN filter
     };
 
     const insertAt=idx+1;
@@ -771,7 +774,8 @@ addEventListener('touchstart',e=>{
 },{passive:true});
 
 addEventListener('touchend',e=>{
-  if(profileOpen) return;
+  if(profileOpen) return; // FIRST check — nothing else runs
+  if(moreSheet.classList.contains('open')) return;
   if(Date.now()-lastProfileTap<300) return;
   if(profileOverlay.classList.contains('open')) return;
   if(moreSheet.classList.contains('open')) return;
