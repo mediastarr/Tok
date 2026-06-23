@@ -390,14 +390,32 @@ document.getElementById('moreProfile').addEventListener('click',()=>{
 
 // ===== PROFILE OVERLAY =====
 const profileOverlay=document.getElementById('profileOverlay');
-// Hard block ALL touches — non-passive so preventDefault works
-['touchstart','touchend','touchmove'].forEach(evt=>{
-  profileOverlay.addEventListener(evt,e=>{
-    e.stopPropagation();
-    e.preventDefault();
-    lastProfileTap=Date.now();
-  },{passive:false});
-});
+
+// Track touch on overlay to distinguish scroll vs tap vs background bleed
+let overlayTouchStartY=0;
+let overlayScrolling=false;
+
+profileOverlay.addEventListener('touchstart',e=>{
+  e.stopPropagation();
+  lastProfileTap=Date.now();
+  overlayTouchStartY=e.touches[0].clientY;
+  overlayScrolling=false;
+},{passive:false});
+
+profileOverlay.addEventListener('touchmove',e=>{
+  e.stopPropagation();
+  lastProfileTap=Date.now();
+  if(Math.abs(e.touches[0].clientY-overlayTouchStartY)>10) overlayScrolling=true;
+  // Only preventDefault if NOT scrolling the grid (let grid scroll naturally)
+  const inGrid=e.target.closest('.profile-videos');
+  if(!inGrid) e.preventDefault();
+},{passive:false});
+
+profileOverlay.addEventListener('touchend',e=>{
+  e.stopPropagation();
+  lastProfileTap=Date.now();
+},{passive:false});
+
 profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 async function openProfile(){
@@ -442,16 +460,17 @@ async function openProfile(){
       // Use both click and touchend for Neural Band compatibility
       const handler=(e)=>{
         e.stopPropagation();
-        e.preventDefault();
-        lastProfileTap=Date.now(); // set immediately, blocks swipe handler
+        // Don't preventDefault — needed for tap to register
+        if(overlayScrolling) return; // was a scroll, not a tap
+        lastProfileTap=Date.now();
         window._profileTapped=true;
         playProfileVid(v.play, v.video_id);
       };
       thumb.addEventListener('touchstart',(e)=>{
         e.stopPropagation();
         window._profileTapped=false;
-        lastProfileTap=Date.now(); // also set on touchstart to be safe
-      },{passive:false});
+        lastProfileTap=Date.now();
+      },{passive:true});
       thumb.addEventListener('click', handler);
       thumb.addEventListener('touchend', handler);
       thumbsEl.appendChild(thumb);
@@ -841,7 +860,7 @@ addEventListener('touchstart',e=>{
 
 addEventListener('touchend',e=>{
   // Block swipe for 300ms after a profile thumb was tapped
-  if(Date.now()-lastProfileTap<300) return;
+  if(Date.now()-lastProfileTap<500) return;
   if(profileOverlay.classList.contains('open')) return;
   if(moreSheet.classList.contains('open')) return;
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
