@@ -103,6 +103,7 @@ body.menu-active .menu-actions{display:flex}
   background:rgba(0,0,0,.92);
   display:none;flex-direction:column;align-items:center;justify-content:center;
   gap:10px;padding:24px;
+  touch-action:none;
 }
 .profile-overlay.open{display:flex}
 .profile-av{
@@ -387,9 +388,10 @@ document.getElementById('moreProfile').addEventListener('click',()=>{
 
 // ===== PROFILE OVERLAY =====
 const profileOverlay=document.getElementById('profileOverlay');
-// Prevent touches on profile overlay from bleeding through to card/swipe handler
-profileOverlay.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-profileOverlay.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
+// Hard block — stop ALL touches on the overlay from reaching anything below
+profileOverlay.addEventListener('touchstart',e=>{e.stopPropagation();},{passive:false});
+profileOverlay.addEventListener('touchend',e=>{e.stopPropagation();},{passive:false});
+profileOverlay.addEventListener('touchmove',e=>{e.stopPropagation();},{passive:false});
 profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 async function openProfile(){
@@ -435,8 +437,10 @@ async function openProfile(){
       const handler=(e)=>{
         e.stopPropagation();
         e.preventDefault();
+        window._profileTapped=true; // signal to swipe handler to ignore this touch
         playProfileVid(v.play, v.video_id);
       };
+      thumb.addEventListener('touchstart',(e)=>{e.stopPropagation();window._profileTapped=false;},{passive:false});
       thumb.addEventListener('click', handler);
       thumb.addEventListener('touchend', handler);
       thumbsEl.appendChild(thumb);
@@ -452,29 +456,31 @@ function closeProfile(){
 
 // Called when tapping a thumbnail in the profile grid
 window.playProfileVid=function(videoUrl,videoId){
-  closeProfile();
+  // Close overlays first
+  profileOverlay.classList.remove('open');
   closeMenu();
-  // Add this video to the front of the queue and play it
-  if(!seenIds.has(videoId)){
-    seenIds.add(videoId);
-    const d=vids[idx]; // borrow author info from current video
-    const newVid={aweme_id:videoId,videoUrl,title:'',author:d.author,digg_count:0,share_count:0,comment_count:0,duration:30,region:'US',cover:''};
-    vids.splice(idx+1,0,newVid);
-    // Add reel DOM element at correct position
-    const reel=document.createElement('div');
-    reel.className='reel';
-    reel.style.top=(idx+1)*100+'%';
-    const video=document.createElement('video');
-    video.playsInline=true;video.preload='none';video.muted=true;
-    video.setAttribute('webkit-playsinline','true');
-    video.addEventListener('playing',()=>{if(reel.classList.contains('active')){loader.classList.remove('show');if(userTouched&&video.muted){video.muted=false;video.volume=1;}}});
-    video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
-    reel.appendChild(video);
-    feed.appendChild(reel);
-    // Reposition all reels after insertion point
-    document.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
-  }
-  show(idx+1,true,1);
+
+  // Small delay so overlay close animation finishes before injecting video
+  setTimeout(()=>{
+    if(!seenIds.has(videoId)){
+      seenIds.add(videoId);
+      const d=vids[idx];
+      const newVid={aweme_id:videoId,videoUrl,title:'',author:d.author,digg_count:0,share_count:0,comment_count:0,duration:30,region:'US',cover:''};
+      vids.splice(idx+1,0,newVid);
+      const reel=document.createElement('div');
+      reel.className='reel';
+      reel.style.top=(idx+1)*100+'%';
+      const video=document.createElement('video');
+      video.playsInline=true;video.preload='none';video.muted=true;
+      video.setAttribute('webkit-playsinline','true');
+      video.addEventListener('playing',()=>{if(reel.classList.contains('active')){loader.classList.remove('show');if(userTouched&&video.muted){video.muted=false;video.volume=1;}}});
+      video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
+      reel.appendChild(video);
+      feed.appendChild(reel);
+      document.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
+    }
+    show(idx+1,true,1);
+  },50);
 };
 
 document.getElementById('profileClose').addEventListener('click',closeProfile);
@@ -777,13 +783,15 @@ document.getElementById('splash').addEventListener('click',async(e)=>{
 // ===== SWIPE with smooth animation =====
 let sx=0,sy=0;
 addEventListener('touchstart',e=>{
+  if(profileOverlay.classList.contains('open')) return;
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;
 },{passive:true});
 addEventListener('touchend',e=>{
+  if(window._profileTapped){window._profileTapped=false;return;} // thumb was tapped
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
-  if(profileOverlay.classList.contains('open')) return; // block swipes when profile open
-  if(moreSheet.classList.contains('open')) return; // block swipes when more sheet open
+  if(profileOverlay.classList.contains('open')) return;
+  if(moreSheet.classList.contains('open')) return;
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
   if(isSwipe){
     if(dy>50) show(idx+1,true,1);
