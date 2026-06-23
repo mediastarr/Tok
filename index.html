@@ -373,6 +373,7 @@ async function openProfile(){
   thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Loading videos...</div>';
 
   profileOpen=true;
+  sx=-9999;sy=-9999; // invalidate any pending swipe coordinates
   profileOverlay.classList.add('open');
 
   try{
@@ -774,9 +775,10 @@ addEventListener('touchstart',e=>{
 },{passive:true});
 
 addEventListener('touchend',e=>{
-  if(profileOpen) return; // FIRST check — nothing else runs
+  if(profileOpen) return;
   if(moreSheet.classList.contains('open')) return;
   if(Date.now()-lastProfileTap<300) return;
+  if(sx===-9999) return; // no valid touchstart was recorded
   if(profileOverlay.classList.contains('open')) return;
   if(moreSheet.classList.contains('open')) return;
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
