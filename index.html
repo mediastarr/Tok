@@ -123,7 +123,9 @@ body.menu-active .menu-actions{display:flex}
 .profile-stat-lbl{font-size:10px;color:#888}
 .profile-videos{
   width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;
-  margin-top:8px;max-height:35vh;overflow:hidden;
+  margin-top:8px;max-height:45vh;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
 }
 .profile-vid-thumb{
   aspect-ratio:9/16;background:#222;border-radius:4px;overflow:hidden;
@@ -388,10 +390,14 @@ document.getElementById('moreProfile').addEventListener('click',()=>{
 
 // ===== PROFILE OVERLAY =====
 const profileOverlay=document.getElementById('profileOverlay');
-// Hard block — stop ALL touches on the overlay from reaching anything below
-profileOverlay.addEventListener('touchstart',e=>{e.stopPropagation();},{passive:false});
-profileOverlay.addEventListener('touchend',e=>{e.stopPropagation();},{passive:false});
-profileOverlay.addEventListener('touchmove',e=>{e.stopPropagation();},{passive:false});
+// Hard block ALL touches — non-passive so preventDefault works
+['touchstart','touchend','touchmove'].forEach(evt=>{
+  profileOverlay.addEventListener(evt,e=>{
+    e.stopPropagation();
+    e.preventDefault();
+    lastProfileTap=Date.now();
+  },{passive:false});
+});
 profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 async function openProfile(){
@@ -419,7 +425,7 @@ async function openProfile(){
   try{
     const handle=d.author?.unique_id;
     if(!handle) throw new Error('no handle');
-    const res=await fetch('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=9&cursor=0&_='+Date.now());
+    const res=await fetch('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=18&cursor=0&_='+Date.now());
     const data=await res.json();
     const videos=data?.data?.videos||[];
 
@@ -429,7 +435,7 @@ async function openProfile(){
     }
 
     thumbsEl.innerHTML='';
-    videos.slice(0,9).forEach(v=>{
+    videos.slice(0,18).forEach(v=>{
       const thumb=document.createElement('div');
       thumb.className='profile-vid-thumb';
       if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
