@@ -387,6 +387,10 @@ document.getElementById('moreProfile').addEventListener('click',()=>{
 
 // ===== PROFILE OVERLAY =====
 const profileOverlay=document.getElementById('profileOverlay');
+// Prevent touches on profile overlay from bleeding through to card/swipe handler
+profileOverlay.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
+profileOverlay.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
+profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 async function openProfile(){
   if(!vids[idx]) return;
@@ -430,10 +434,11 @@ async function openProfile(){
       // Use both click and touchend for Neural Band compatibility
       const handler=(e)=>{
         e.stopPropagation();
+        e.preventDefault();
         playProfileVid(v.play, v.video_id);
       };
       thumb.addEventListener('click', handler);
-      thumb.addEventListener('touchend', handler, {passive:true});
+      thumb.addEventListener('touchend', handler);
       thumbsEl.appendChild(thumb);
     });
   }catch(e){
@@ -777,10 +782,12 @@ addEventListener('touchstart',e=>{
 addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
+  if(profileOverlay.classList.contains('open')) return; // block swipes when profile open
+  if(moreSheet.classList.contains('open')) return; // block swipes when more sheet open
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
   if(isSwipe){
-    if(dy>50) show(idx+1,true,1);   // swipe down → next
-    else show(idx-1,true,-1);        // swipe up → prev
+    if(dy>50) show(idx+1,true,1);
+    else show(idx-1,true,-1);
   }
 },{passive:true});
 
