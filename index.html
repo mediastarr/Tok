@@ -668,35 +668,182 @@ async function loadFromApify(){
   }));
 }
 
-// FIX 1: preload='metadata' so first frame + duration loads immediately
+// ── YouTube Shorts fallback ─────────────────────────────────────────────────
+const YT_KEYS=[
+  'AIzaSyDz_P6WIbRBr31VO7fQX0UcP3tFSBlGEE0',
+  'AIzaSyDsL7qek4qkCjmyczIUArhK8krUq2QV3mo',
+  'AIzaSyBKgt_-gM4Nnfkxj-6xz81tNHMydBLD0CQ',
+  'AIzaSyAxz8JgYT02TS12fcdIYVNqmhT_0OwA48Q',
+  'AIzaSyDM_mZiXih02mMOCKEUgfrJhHU0RCO_W4Y',
+  'AIzaSyAAqJcN9TJiNpPSvvIX8IP2pDCbwrwbH68',
+  'AIzaSyALpQ6mleh8v4SlVnk1V8nBZ2pTIUQAoLk',
+  'AIzaSyAGy9rR4lbNYMlRgQcluVUlCpuRFIWbnZk',
+  'AIzaSyD1f3AnsJRrGmTTBWK_XsgwqLnDQv2mA00',
+  'AIzaSyB0cB1FlDb4Azzq2xh7_ENz2CvwpWJnJXg',
+  'AIzaSyCjyaZibozhYOTolhznZ0zLz45mIqtOLaw',
+  'AIzaSyC9qC_Q3q-aDhVwfp4QOdIvecqQW04Mq3M',
+  'AIzaSyDTIw26DvcDWRCGftd-c-_SdcllN0zvxE0',
+  'AIzaSyALn7in8kXrFCzC1VU51UqNFZ9YuLkwXNY',
+  'AIzaSyB_3g7oRfcoKqQYqt7UPHwQNTt3BjLD4iw'
+];
+let ytKeyIdx=0;
+let ytPageToken='';
+const YT_QUERIES=['#shorts','funny shorts','comedy shorts','viral shorts','trending shorts'];
+let ytQueryIdx=0;
+
+function getYtKey(){return YT_KEYS[ytKeyIdx%YT_KEYS.length];}
+
+// Parse ISO 8601 duration (PT1M30S) → total seconds
+function parseIsoDuration(iso){
+  if(!iso) return 999;
+  const m=iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if(!m) return 999;
+  return (parseInt(m[1]||0)*3600)+(parseInt(m[2]||0)*60)+parseInt(m[3]||0);
+}
+
+// Shared quota-aware YT fetch — rotates keys on 403, throws on other errors
+async function ytFetch(url){
+  let tried=0;
+  while(tried<YT_KEYS.length){
+    // Swap the key param in the URL
+    const u=new URL(url);
+    u.searchParams.set('key',getYtKey());
+    try{
+      const res=await fetchFast(u.toString(),{},6000);
+      const data=await res.json();
+      if(data.error){
+        const reason=data.error?.errors?.[0]?.reason||'';
+        if(data.error.code===403&&(reason==='quotaExceeded'||reason==='dailyLimitExceeded'||reason==='forbidden')){
+          console.warn('YT key quota hit, rotating…',YT_KEYS[ytKeyIdx%YT_KEYS.length]);
+          ytKeyIdx++;tried++;continue;
+        }
+        throw new Error('YT API: '+data.error.message);
+      }
+      return data;
+    }catch(e){
+      if(e.name==='AbortError'){ytKeyIdx++;tried++;continue;}
+      if(String(e).includes('quota')||String(e).includes('403')){ytKeyIdx++;tried++;continue;}
+      throw e;
+    }
+  }
+  throw new Error('All YT keys exhausted');
+}
+
+async function loadFromYouTubeShorts(){
+  const query=YT_QUERIES[ytQueryIdx%YT_QUERIES.length];
+  ytQueryIdx++;
+
+  // ── Pass 1: search for candidate videos ──────────────────────────────────
+  const searchParams=new URLSearchParams({
+    part:'snippet',
+    q:query,
+    type:'video',
+    videoDuration:'short',      // API "short" = under 4 min; we filter further below
+    videoEmbeddable:'true',     // only embeddable videos
+    maxResults:30,              // fetch extra so we have enough after filtering
+    regionCode:'US',
+    relevanceLanguage:'en',
+    key:'PLACEHOLDER',
+    ...(ytPageToken?{pageToken:ytPageToken}:{})
+  });
+  const searchData=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+searchParams);
+  ytPageToken=searchData.nextPageToken||'';
+
+  const candidates=searchData.items||[];
+  if(!candidates.length) throw new Error('YT search: no candidates');
+
+  // Build a map of videoId → snippet for quick lookup
+  const snippetMap={};
+  candidates.forEach(v=>{snippetMap[v.id.videoId]=v.snippet;});
+  const ids=candidates.map(v=>v.id.videoId).join(',');
+
+  // ── Pass 2: fetch contentDetails to get real duration + dimension ─────────
+  const detailParams=new URLSearchParams({
+    part:'contentDetails,statistics',
+    id:ids,
+    key:'PLACEHOLDER'
+  });
+  const detailData=await ytFetch('https://www.googleapis.com/youtube/v3/videos?'+detailParams);
+  const details=detailData.items||[];
+
+  // ── Filter: keep only true Shorts (≤60s) ─────────────────────────────────
+  const shorts=details.filter(v=>{
+    const secs=parseIsoDuration(v.contentDetails?.duration);
+    // Must be 60 seconds or under to qualify as a Short
+    return secs>0&&secs<=60;
+  });
+
+  if(!shorts.length) throw new Error('YT: no true Shorts found after duration filter');
+
+  return shorts.map(v=>{
+    const snippet=snippetMap[v.id]||{};
+    const secs=parseIsoDuration(v.contentDetails?.duration);
+    return {
+      aweme_id:'yt_'+v.id,
+      videoUrl:'',              // not used — iframe rendered in addToFeed
+      ytVideoId:v.id,
+      _ytShort:true,
+      title:snippet.title||'',
+      author:{
+        unique_id:snippet.channelTitle||'YouTuber',
+        avatar:'',
+        nickname:snippet.channelTitle||''
+      },
+      digg_count:parseInt(v.statistics?.likeCount||0),
+      share_count:0,
+      comment_count:parseInt(v.statistics?.commentCount||0),
+      duration:secs,
+      region:'US',
+      cover:snippet.thumbnails?.high?.url||snippet.thumbnails?.medium?.url||snippet.thumbnails?.default?.url||''
+    };
+  });
+}
+// ── end YouTube Shorts ───────────────────────────────────────────────────────
+
 function addToFeed(items){
   let added=0;
   const feedEl=document.getElementById('feed');
   for(const v of items){
     if(seenIds.has(v.aweme_id)) continue;
     if(v.region&&v.region!=='US') continue;
-    if(v.duration===0||v.duration>60) continue;
-    if(!v.videoUrl) continue;
-    if(v.videoUrl.endsWith('.mp3')) continue;
-    if(!v.videoUrl.startsWith('http')) continue;
+    if(!v._ytShort){
+      if(v.duration===0||v.duration>60) continue;
+      if(!v.videoUrl) continue;
+      if(v.videoUrl.endsWith('.mp3')) continue;
+      if(!v.videoUrl.startsWith('http')) continue;
+    }
     seenIds.add(v.aweme_id);
     vids.push(v);
     const reel=document.createElement('div');
     reel.className='reel';
     reel.style.top=(vids.length-1)*100+'%';
-    const video=document.createElement('video');
-    video.playsInline=true;
-    video.preload='metadata'; // FIX 1: was 'none' — load first frame immediately
-    video.muted=true;
-    video.setAttribute('webkit-playsinline','true');
-    video.addEventListener('playing',()=>{
-      if(reel.classList.contains('active')){
-        loader.classList.remove('show');
-        if(userTouched&&video.muted){video.muted=false;video.volume=1;}
+
+    if(v._ytShort){
+      // YouTube Short — rendered as iframe, activated lazily in show()
+      reel.dataset.ytId=v.ytVideoId;
+      reel.dataset.ytReady='0';
+      // Placeholder thumbnail so reel isn't blank before activation
+      if(v.cover){
+        const img=document.createElement('img');
+        img.src=v.cover;
+        img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+        reel.appendChild(img);
       }
-    });
-    video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
-    reel.appendChild(video);
+    }else{
+      const video=document.createElement('video');
+      video.playsInline=true;
+      video.preload='metadata';
+      video.muted=true;
+      video.setAttribute('webkit-playsinline','true');
+      video.addEventListener('playing',()=>{
+        if(reel.classList.contains('active')){
+          loader.classList.remove('show');
+          if(userTouched&&video.muted){video.muted=false;video.volume=1;}
+        }
+      });
+      video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
+      reel.appendChild(video);
+    }
     feedEl.appendChild(reel);
     added++;
   }
@@ -718,11 +865,12 @@ async function loadBatch(){
         else if(tier===3) rawItems=await loadFromSocialCrawl();
         else if(tier===4) rawItems=await loadFromScrapeCreators();
         else if(tier===5) rawItems=await loadFromSociaVault();
-        else rawItems=await loadFromApify();
+        else if(tier===6) rawItems=await loadFromApify();
+        else rawItems=await loadFromYouTubeShorts();
         break;
       }catch(e){
         tier++;
-        if(tier>6){tier=0;} // cycle back to tier 0 instead of dying
+        if(tier>7){tier=0;} // cycle back to tier 0 instead of dying
         if(tier===startTier) throw new Error('all sources exhausted'); // full cycle with no success
       }
     }
@@ -787,36 +935,76 @@ async function show(i,animate=false,dir=1){
     const vid=r.querySelector('video');
     if(isActive){
       loader.classList.add('show');
-      if(!vid.src) vid.src=vids[n].videoUrl;
-      vid.preload='auto';
-      vid.muted=false;vid.volume=1;
 
-      let played=false;
-      const tryPlay=()=>{
-        if(played) return;
-        played=true;
-        clearTimeout(currentSkipTimer);
-        currentSkipTimer=null;
-        vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
-      };
-
-      // 4-second hard timeout — auto-skip if video never loads
-      currentSkipTimer=setTimeout(()=>{
-        if(!played){
-          console.warn('Video stuck, skipping:',vid.src);
-          show(idx+1,true,1);
+      if(vids[n]?._ytShort){
+        // ── YouTube Short iframe path ────────────────────────────
+        if(r.dataset.ytReady==='0'){
+          // Remove thumbnail placeholder
+          const img=r.querySelector('img');
+          if(img) img.remove();
+          const ytId=r.dataset.ytId;
+          const iframe=document.createElement('iframe');
+          iframe.src='https://www.youtube.com/embed/'+ytId+
+            '?autoplay=1&mute=0&loop=1&playlist='+ytId+
+            '&controls=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1';
+          iframe.allow='autoplay; fullscreen';
+          iframe.setAttribute('allowfullscreen','');
+          iframe.style.cssText='width:100%;height:100%;border:none;position:absolute;inset:0';
+          r.appendChild(iframe);
+          r.dataset.ytReady='1';
+          // iframe fires load event — hide spinner then
+          iframe.addEventListener('load',()=>{
+            if(r.classList.contains('active')) loader.classList.remove('show');
+          },{once:true});
+        }else{
+          // Already injected — just unpause via postMessage
+          const iframe=r.querySelector('iframe');
+          if(iframe) iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}','*');
+          loader.classList.remove('show');
         }
-      },4000);
-
-      if(vid.readyState>=3){
-        tryPlay();
+        // 4s skip timer for iframes too (in case embed fails)
+        currentSkipTimer=setTimeout(()=>{
+          const iframe=r.querySelector('iframe');
+          if(iframe&&r.classList.contains('active')){
+            console.warn('YT iframe stuck, skipping');
+            show(idx+1,true,1);
+          }
+        },4000);
       }else{
-        const h=()=>{
-          vid.removeEventListener('canplay',h);
-          tryPlay();
+        // ── Regular video path ───────────────────────────────────
+        const vid=r.querySelector('video');
+        if(!vid) return;
+        if(!vid.src) vid.src=vids[n].videoUrl;
+        vid.preload='auto';
+        vid.muted=false;vid.volume=1;
+
+        let played=false;
+        const tryPlay=()=>{
+          if(played) return;
+          played=true;
+          clearTimeout(currentSkipTimer);
+          currentSkipTimer=null;
+          vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
         };
-        vid.addEventListener('canplay',h);
-        vid.load();
+
+        // 4-second hard timeout — auto-skip if video never loads
+        currentSkipTimer=setTimeout(()=>{
+          if(!played){
+            console.warn('Video stuck, skipping:',vid.src);
+            show(idx+1,true,1);
+          }
+        },4000);
+
+        if(vid.readyState>=3){
+          tryPlay();
+        }else{
+          const h=()=>{
+            vid.removeEventListener('canplay',h);
+            tryPlay();
+          };
+          vid.addEventListener('canplay',h);
+          vid.load();
+        }
       }
 
       updateOverlay(vids[n]);
@@ -824,8 +1012,15 @@ async function show(i,animate=false,dir=1){
       // Trigger next batch earlier — when 5 videos remain
       if(n>=vids.length-5) loadBatch();
     }else{
-      vid.pause();
-      if(Math.abs(n-idx)>6) vid.removeAttribute('src');
+      // Deactivate — pause video or pause YT iframe
+      if(vids[n]?._ytShort){
+        const iframe=r.querySelector('iframe');
+        if(iframe) iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
+      }else{
+        const vid=r.querySelector('video');
+        if(vid) vid.pause();
+        if(Math.abs(n-idx)>6&&vid) vid.removeAttribute('src');
+      }
     }
   });
 }
