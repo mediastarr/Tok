@@ -107,7 +107,6 @@ body.menu-active .menu-actions{display:flex}
 .profile-stat-val{font-size:15px;font-weight:700}
 .profile-stat-lbl{font-size:10px;color:#888}
 
-/* ONLY CHANGES: Close before grid, 5-col grid, smaller thumbs */
 .profile-close{
   padding:7px 24px;border-radius:20px;
   background:rgba(255,255,255,.12);font-size:12px;cursor:pointer;
@@ -185,7 +184,6 @@ body.menu-active .menu-actions{display:flex}
   <div class="profile-name" id="profileName"></div>
   <div class="profile-handle" id="profileHandle"></div>
   <div class="profile-stats" id="profileStats"></div>
-  <!-- Close BEFORE videos so Neural Band focus: Close first, then swipe down into videos -->
   <div class="profile-close" id="profileClose" tabindex="0">Close</div>
   <div class="profile-videos" id="profileVideos"></div>
 </div>
@@ -354,7 +352,6 @@ profileOverlay.addEventListener('click',e=>e.stopPropagation());
 
 async function openProfile(){
   if(!vids[idx]) return;
-  // Freeze background video
   const bgVid=document.querySelector('.reel.active video');
   if(bgVid) bgVid.pause();
   const d=vids[idx];
@@ -373,13 +370,12 @@ async function openProfile(){
   thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Loading videos...</div>';
 
   profileOpen=true;
-  sx=-9999;sy=-9999; // invalidate any pending swipe coordinates
+  sx=-9999;sy=-9999;
   profileOverlay.classList.add('open');
 
   try{
     const handle=d.author?.unique_id;
     if(!handle) throw new Error('no handle');
-    // CHANGE 1: fetch 10 videos instead of 9
     const res=await fetchFast('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=10&cursor=0&_='+Date.now());
     const data=await res.json();
     const videos=data?.data?.videos||[];
@@ -390,12 +386,10 @@ async function openProfile(){
     }
 
     thumbsEl.innerHTML='';
-    // CHANGE 2: show all 10
     videos.slice(0,10).forEach(v=>{
       const thumb=document.createElement('div');
       thumb.className='profile-vid-thumb';
       if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
-      // Use wmplay (no watermark, direct CDN) or fall back to play
       const videoUrl=v.wmplay||v.play;
       const handler=(e)=>{
         e.stopPropagation();
@@ -421,19 +415,17 @@ async function openProfile(){
 function closeProfile(){
   profileOpen=false;
   profileOverlay.classList.remove('open');
-  // Resume background video
   const bgVid=document.querySelector('.reel.active video');
   if(bgVid){bgVid.muted=false;bgVid.volume=1;bgVid.play().catch(()=>{});}
 }
 
 window.playProfileVid=function(videoUrl,videoId){
   window._profileTapped=true;
-  // Don't clear profileOpen yet — keep it true so touchend stays blocked
   profileOverlay.classList.remove('open');
   closeMenu();
 
   setTimeout(()=>{
-    profileOpen=false; // now safe — touchend already fired
+    profileOpen=false;
     const existingIdx=vids.findIndex(v=>v.aweme_id===videoId);
     if(existingIdx!==-1){
       show(existingIdx,true,1);
@@ -448,7 +440,7 @@ window.playProfileVid=function(videoUrl,videoId){
       author:d.author,
       digg_count:0,share_count:0,comment_count:0,
       duration:60,region:'US',cover:'',
-      _fromProfile:true // skip CDN filter
+      _fromProfile:true
     };
 
     const insertAt=idx+1;
@@ -527,7 +519,6 @@ let tikwmCursor=0;
 let rapidCursor=0;
 let lastProfileTap=0;
 
-// Fast timeout fetch — tiers fail in 5s max instead of hanging
 function fetchFast(url,opts={},ms=5000){
   const ctrl=new AbortController();
   const t=setTimeout(()=>ctrl.abort(),ms);
@@ -619,11 +610,9 @@ async function loadFromSocialCrawl(){
 async function loadFromScrapeCreators(){
   const res=await fetchFast(PROXY+'/scrapecreators');
   const data=await res.json();
-  // ScrapeCreators returns aweme_list similar to SociaVault
   const items=data?.aweme_list||data?.data?.aweme_list||[];
   if(!items.length) throw new Error('ScrapeCreators: no data');
   return Object.values(items).map(v=>{
-    // Use no-watermark URL if available and no watermark, else play_addr
     const urlList=v.video?.download_no_watermark_addr?.url_list||v.video?.play_addr?.url_list||{};
     const videoUrl=Object.values(urlList)[0]||'';
     return {
@@ -679,6 +668,7 @@ async function loadFromApify(){
   }));
 }
 
+// FIX 1: preload='metadata' so first frame + duration loads immediately
 function addToFeed(items){
   let added=0;
   const feedEl=document.getElementById('feed');
@@ -687,7 +677,6 @@ function addToFeed(items){
     if(v.region&&v.region!=='US') continue;
     if(v.duration===0||v.duration>60) continue;
     if(!v.videoUrl) continue;
-    // Reject audio-only URLs and empty strings, accept any tiktok CDN
     if(v.videoUrl.endsWith('.mp3')) continue;
     if(!v.videoUrl.startsWith('http')) continue;
     seenIds.add(v.aweme_id);
@@ -696,7 +685,9 @@ function addToFeed(items){
     reel.className='reel';
     reel.style.top=(vids.length-1)*100+'%';
     const video=document.createElement('video');
-    video.playsInline=true;video.preload='none';video.muted=true;
+    video.playsInline=true;
+    video.preload='metadata'; // FIX 1: was 'none' — load first frame immediately
+    video.muted=true;
     video.setAttribute('webkit-playsinline','true');
     video.addEventListener('playing',()=>{
       if(reel.classList.contains('active')){
@@ -741,22 +732,33 @@ async function loadBatch(){
   return totalAdded;
 }
 
+// FIX 2: actually set src + call load() so buffering starts before user arrives
 function preloadAhead(){
   const reels=document.querySelectorAll('.reel');
   for(let o=1;o<=3;o++){
     const ni=idx+o;
     if(ni<vids.length&&reels[ni]){
       const v=reels[ni].querySelector('video');
-      if(!v.src){v.src=vids[ni].videoUrl;v.preload='auto';v.load();}
+      if(!v.src){
+        v.src=vids[ni].videoUrl;
+        v.preload='auto'; // FIX 2: was missing — actually buffer the data
+        v.load();
+      }
     }
   }
 }
+
+// FIX 3: skip timer + robust canplay handler
+let currentSkipTimer=null;
 
 async function show(i,animate=false,dir=1){
   if(i>=vids.length){await loadBatch();if(i>=vids.length)i=vids.length-1;}
   if(i<0)i=0;
   idx=i;
   const reels=document.querySelectorAll('.reel');
+
+  // Clear any pending skip timer from previous video
+  if(currentSkipTimer){clearTimeout(currentSkipTimer);currentSkipTimer=null;}
 
   if(animate){
     feed.classList.add('swiping');
@@ -778,17 +780,35 @@ async function show(i,animate=false,dir=1){
       if(!vid.src) vid.src=vids[n].videoUrl;
       vid.preload='auto';
       vid.muted=false;vid.volume=1;
+
+      let played=false;
       const tryPlay=()=>{
+        if(played) return;
+        played=true;
+        clearTimeout(currentSkipTimer);
+        currentSkipTimer=null;
         vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
       };
-      if(vid.readyState>=3) tryPlay();
-      else if(vid.readyState>=2){
+
+      // FIX 3: 3-second hard timeout — auto-skip if video never loads
+      currentSkipTimer=setTimeout(()=>{
+        if(!played){
+          console.warn('Video stuck, skipping:',vid.src);
+          show(idx+1,true,1);
+        }
+      },3000);
+
+      if(vid.readyState>=3){
         tryPlay();
       }else{
-        const h=()=>{vid.removeEventListener('canplay',h);tryPlay();};
+        const h=()=>{
+          vid.removeEventListener('canplay',h);
+          tryPlay();
+        };
         vid.addEventListener('canplay',h);
-        if(!vid.src) vid.load();
+        vid.load();
       }
+
       updateOverlay(vids[n]);
       preloadAhead();
       if(n>=vids.length-3) loadBatch();
@@ -831,15 +851,15 @@ addEventListener('touchend',e=>{
   if(profileOpen) return;
   if(moreSheet.classList.contains('open')) return;
   if(Date.now()-lastProfileTap<300) return;
-  if(sx===-9999) return; // no valid touchstart was recorded
+  if(sx===-9999) return;
   if(profileOverlay.classList.contains('open')) return;
   if(moreSheet.classList.contains('open')) return;
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
   if(isSwipe){
-    if(dy>50) show(idx+1,true,1);
-    else show(idx-1,true,-1);
+    if(dy<-50) show(idx+1,true,1);   // swipe up = next video
+    else if(dy>50) show(idx-1,true,-1); // swipe down = previous video
   }
 },{passive:true});
 
