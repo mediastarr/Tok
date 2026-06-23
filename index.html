@@ -25,6 +25,7 @@ body{color:#fff;font-family:-apple-system,system-ui,sans-serif;touch-action:none
 body.ready .card{pointer-events:auto}
 body.menu-active .card{height:48vh}
 
+/* ===== FEED + SWIPE ANIMATION ===== */
 #feed{
   position:absolute;inset:0;
   transition:transform .32s cubic-bezier(.4,0,.2,1);
@@ -33,11 +34,13 @@ body.menu-active .card{height:48vh}
 .reel{position:absolute;left:0;width:100%;height:100%;background:#000}
 .reel video{width:100%;height:100%;object-fit:cover}
 
+/* ===== VIDEO INFO OVERLAY ===== */
 .vid-info{
   position:absolute;left:0;right:0;bottom:0;
   padding:48px 12px 14px;
   background:linear-gradient(transparent,rgba(0,0,0,.7));
-  pointer-events:none;z-index:3;transition:opacity .2s;
+  pointer-events:none;z-index:3;
+  transition:opacity .2s;
 }
 body.menu-active .vid-info{opacity:0}
 .vid-info-user{font-size:13px;font-weight:700;margin-bottom:3px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
@@ -45,6 +48,7 @@ body.menu-active .vid-info{opacity:0}
 .vid-info-stats{font-size:11px;color:rgba(255,255,255,.7);margin-top:4px;display:flex;gap:10px}
 .vid-info-stats span{display:flex;align-items:center;gap:3px}
 
+/* ===== PLAY OVERLAY ===== */
 .play-overlay{
   position:absolute;inset:0;display:none;align-items:center;justify-content:center;
   background:rgba(0,0,0,.3);pointer-events:none;z-index:5;
@@ -56,6 +60,7 @@ body.menu-active .play-overlay{display:flex}
 }
 .play-circle svg{width:20px;height:20px;fill:rgba(255,255,255,.9);margin-left:2px}
 
+/* ===== MENU INFO ===== */
 .menu-info{display:none;flex-direction:column;align-items:flex-start;width:auto;max-width:80%;padding:0 4px}
 body.menu-active .menu-info{display:flex}
 .menu-user-row{font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
@@ -65,6 +70,7 @@ body.menu-active .menu-info{display:flex}
 .menu-stats{font-size:11px;color:#aaa;margin-top:4px;display:flex;gap:12px}
 .menu-stats span{display:flex;align-items:center;gap:3px}
 
+/* ===== ACTION BAR ===== */
 .menu-actions{display:none;gap:18px;padding:10px 24px;background:rgba(50,50,50,.8);border-radius:40px}
 body.menu-active .menu-actions{display:flex}
 .action-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -72,14 +78,17 @@ body.menu-active .menu-actions{display:flex}
 .action-btn.liked svg{fill:#fe2c55;opacity:1}
 .action-btn.saved svg{fill:#ffe135;opacity:1}
 
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(60,60,60,.85);color:#fff;padding:7px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:500}
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(60,60,60,.85);color:#fff;padding:7px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
 .toast.show{opacity:1}
 
+/* ===== LOADER ===== */
 .loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);z-index:4;pointer-events:none;opacity:0;transition:opacity .2s}
 .loader.show{opacity:1}
 .spin{width:32px;height:32px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+/* ===== SPLASH ===== */
 .splash{
   position:fixed;inset:0;z-index:999;background:#000;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -87,71 +96,85 @@ body.menu-active .menu-actions{display:flex}
 }
 .splash-icon{width:72px;height:72px;border-radius:50%;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-size:28px;padding-left:4px}
 .splash-text{color:#fff;font-size:15px;letter-spacing:.05em}
-
 /* ===== PROFILE OVERLAY ===== */
 .profile-overlay{
   position:fixed;inset:0;z-index:300;
   background:rgba(0,0,0,.92);
-  display:none;flex-direction:column;align-items:center;
-  padding:24px 16px;
-  overflow:hidden;
-  touch-action:none; /* block all gestures on overlay itself */
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:24px;
+  touch-action:none;
 }
 .profile-overlay.open{display:flex}
-.profile-av{width:72px;height:72px;border-radius:50%;background:#333;border:2px solid #555;overflow:hidden;flex-shrink:0;margin-top:8px}
+.profile-av{
+  width:72px;height:72px;border-radius:50%;
+  background:#333;border:2px solid #555;
+  overflow:hidden;flex-shrink:0;
+}
 .profile-av img{width:100%;height:100%;object-fit:cover}
 .profile-av-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px}
-.profile-name{font-size:16px;font-weight:700;margin-top:8px}
+.profile-name{font-size:16px;font-weight:700}
 .profile-handle{font-size:13px;color:#aaa;margin-top:2px}
-.profile-stats{display:flex;gap:20px;margin-top:10px}
+.profile-stats{
+  display:flex;gap:20px;margin-top:8px;
+}
 .profile-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
 .profile-stat-val{font-size:15px;font-weight:700}
 .profile-stat-lbl{font-size:10px;color:#888}
-/* Scrollable video grid */
 .profile-videos{
-  width:100%;
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:3px;
-  margin-top:10px;
-  flex:1;
-  overflow-y:scroll;
-  overflow-x:hidden;
+  width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;
+  margin-top:8px;max-height:35vh;
+  overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-  touch-action:pan-y; /* native vertical scroll inside grid */
-  will-change:scroll-position;
+  touch-action:pan-y;
 }
 .profile-vid-thumb{
   aspect-ratio:9/16;background:#222;border-radius:4px;overflow:hidden;
-  cursor:pointer;-webkit-tap-highlight-color:rgba(255,255,255,.2);
-  flex-shrink:0;
+  cursor:pointer;-webkit-tap-highlight-color:rgba(255,255,255,.1);
 }
-.profile-vid-thumb:active{opacity:.6}
-.profile-vid-thumb img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.profile-vid-thumb:active{opacity:.7}
+.profile-vid-thumb img{width:100%;height:100%;object-fit:cover}
 .profile-close{
-  flex-shrink:0;
-  margin-top:10px;margin-bottom:4px;
-  padding:9px 32px;border-radius:20px;
-  background:rgba(255,255,255,.12);font-size:13px;cursor:pointer;
+  margin-top:10px;font-size:13px;color:#ccc;cursor:pointer;
+  padding:6px 12px;border-radius:12px;background:rgba(255,255,255,.08);
 }
 
-/* ===== MORE SHEET ===== */
+/* ===== MORE MENU BOTTOM SHEET ===== */
 .more-sheet{
   position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);
-  width:90%;max-width:360px;background:#1a1a1a;border-radius:18px 18px 0 0;
-  z-index:400;padding:12px 0 24px;transition:transform .3s cubic-bezier(.4,0,.2,1);
+  width:90%;max-width:360px;
+  background:#1a1a1a;border-radius:18px 18px 0 0;
+  z-index:400;padding:12px 0 24px;
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
 }
 .more-sheet.open{transform:translateX(-50%) translateY(0)}
-.more-sheet-handle{width:36px;height:4px;border-radius:2px;background:#555;margin:0 auto 16px}
+.more-sheet-handle{
+  width:36px;height:4px;border-radius:2px;
+  background:#555;margin:0 auto 16px;
+}
 .more-sheet-title{font-size:11px;color:#666;padding:0 20px 8px;text-transform:uppercase;letter-spacing:.08em}
-.more-row{display:flex;align-items:center;gap:14px;padding:13px 20px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.more-row{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 20px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
 .more-row:active{background:rgba(255,255,255,.06)}
-.more-row-icon{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.more-row-icon{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,.1);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
 .more-row-icon svg{width:18px;height:18px;fill:#fff}
 .more-row-label{font-size:14px}
-.more-sheet-cancel{margin:8px 20px 0;padding:12px;border-radius:12px;background:rgba(255,255,255,.08);text-align:center;font-size:14px;cursor:pointer}
-.more-backdrop{position:fixed;inset:0;z-index:399;background:rgba(0,0,0,.5);display:none}
+.more-sheet-cancel{
+  margin:8px 20px 0;padding:12px;border-radius:12px;
+  background:rgba(255,255,255,.08);text-align:center;
+  font-size:14px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.more-backdrop{
+  position:fixed;inset:0;z-index:399;
+  background:rgba(0,0,0,.5);display:none;
+}
 .more-backdrop.open{display:block}
 </style>
 </head>
@@ -195,15 +218,17 @@ body.menu-active .menu-actions{display:flex}
 
 <div class="toast" id="toast"></div>
 
+<!-- Profile Overlay -->
 <div class="profile-overlay" id="profileOverlay">
   <div class="profile-av" id="profileAv"><div class="profile-av-placeholder">👤</div></div>
   <div class="profile-name" id="profileName"></div>
   <div class="profile-handle" id="profileHandle"></div>
-  <div class="profile-stats" id="profileStatEl"></div>
+  <div class="profile-stats" id="profileStats"></div>
   <div class="profile-videos" id="profileVideos"></div>
   <div class="profile-close" id="profileClose">Close</div>
 </div>
 
+<!-- More Menu Bottom Sheet -->
 <div class="more-backdrop" id="moreBackdrop"></div>
 <div class="more-sheet" id="moreSheet">
   <div class="more-sheet-handle"></div>
@@ -226,37 +251,55 @@ body.menu-active .menu-actions{display:flex}
   </div>
   <div class="more-sheet-cancel" id="moreCancel">Cancel</div>
 </div>
-
 <script>
-let vids=[],idx=0,loading=false,menuOpen=false,profileOpen=false;
+let vids=[],idx=0,loading=false,menuOpen=false;
 const seenIds=new Set(),likedIds=new Set(),savedIds=new Set();
 let loadPending=false,userTouched=false;
+let lastProfileTap=0;
+window._profileTapped=false;
 
 const card=document.getElementById('card');
 const feed=document.getElementById('feed');
 const toastEl=document.getElementById('toast');
 const loader=document.getElementById('loader');
-const profileOverlay=document.getElementById('profileOverlay');
-const profileVideos=document.getElementById('profileVideos');
 const btnLike=document.getElementById('btnLike');
 const btnShare=document.getElementById('btnShare');
 const btnSave=document.getElementById('btnSave');
 const btnMore=document.getElementById('btnMore');
-const moreSheet=document.getElementById('moreSheet');
-const moreBackdrop=document.getElementById('moreBackdrop');
+const profileOverlay=document.getElementById('profileOverlay');
+const profileVideos=document.getElementById('profileVideos');
 
-function fmt(n){if(!n)return'0';return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'K':String(n);}
+['touchstart','touchmove','touchend'].forEach(ev=>{
+  profileVideos.addEventListener(ev,e=>{
+    e.stopPropagation();
+  },{passive:false});
+});
 
+// ===== FORMAT NUMBERS =====
+function fmt(n){
+  if(!n) return '0';
+  return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'K':String(n);
+}
+
+// ===== TOAST =====
 let toastT=null;
-function toast(msg){clearTimeout(toastT);toastEl.textContent=msg;toastEl.classList.add('show');toastT=setTimeout(()=>toastEl.classList.remove('show'),1600);}
+function toast(msg){
+  clearTimeout(toastT);
+  toastEl.textContent=msg;
+  toastEl.classList.add('show');
+  toastT=setTimeout(()=>toastEl.classList.remove('show'),1600);
+}
 
+// ===== UPDATE VIDEO INFO OVERLAY =====
 function updateOverlay(d){
   document.getElementById('vidUser').textContent='@'+(d.author?.unique_id||'user');
   document.getElementById('vidCap').textContent=d.title||'';
-  document.getElementById('vidStats').innerHTML='<span>❤️ '+fmt(d.digg_count)+'</span><span>↗️ '+fmt(d.share_count||0)+'</span>';
+  document.getElementById('vidStats').innerHTML=
+    '<span>❤️ '+fmt(d.digg_count)+'</span>'+
+    '<span>↗️ '+fmt(d.share_count||0)+'</span>';
 }
 
-// ===== MENU =====
+// ===== OPEN MENU =====
 function openMenu(){
   if(!vids[idx]||menuOpen) return;
   menuOpen=true;
@@ -265,8 +308,12 @@ function openMenu(){
   const d=vids[idx];
   document.getElementById('menuUser').textContent='@'+(d.author?.unique_id||'user');
   document.getElementById('menuCap').textContent=d.title||'';
-  document.getElementById('menuAvatar').innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'';
-  document.getElementById('menuStats').innerHTML='<span>❤️ '+fmt(d.digg_count)+'</span><span>↗️ '+fmt(d.share_count||0)+'</span><span>💬 '+fmt(d.comment_count||0)+'</span>';
+  const av=document.getElementById('menuAvatar');
+  av.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'';
+  document.getElementById('menuStats').innerHTML=
+    '<span>❤️ '+fmt(d.digg_count)+'</span>'+
+    '<span>↗️ '+fmt(d.share_count||0)+'</span>'+
+    '<span>💬 '+fmt(d.comment_count||0)+'</span>';
   btnLike.classList.toggle('liked',likedIds.has(d.aweme_id));
   btnSave.classList.toggle('saved',savedIds.has(d.aweme_id));
   document.body.classList.add('menu-active');
@@ -279,241 +326,500 @@ function closeMenu(){
   if(v){v.muted=false;v.volume=1;v.play().catch(()=>{});}
 }
 
-// ===== PROFILE =====
-function openProfile(){
-  if(!vids[idx]) return;
-  profileOpen=true;
-  profileOverlay.classList.add('open');
-  const d=vids[idx];
-  document.getElementById('profileName').textContent=d.author?.nickname||d.author?.unique_id||'User';
-  document.getElementById('profileHandle').textContent='@'+(d.author?.unique_id||'user');
-  document.getElementById('profileStatEl').innerHTML=
-    '<div class="profile-stat"><div class="profile-stat-val">—</div><div class="profile-stat-lbl">Followers</div></div>'+
-    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.digg_count)+'</div><div class="profile-stat-lbl">Likes</div></div>'+
-    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.comment_count||0)+'</div><div class="profile-stat-lbl">Comments</div></div>';
-  const avEl=document.getElementById('profileAv');
-  avEl.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'<div class="profile-av-placeholder">👤</div>';
-  profileVideos.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Loading...</div>';
+// ===== LONG PRESS → OPEN CREATOR PROFILE =====
+let pressTimer=null;
+let wasLongPress=false;
 
-  // Fetch creator videos
-  const handle=d.author?.unique_id;
-  if(!handle){profileVideos.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No handle</div>';return;}
-  fetch('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=18&cursor=0&_='+Date.now())
-    .then(r=>r.json()).then(data=>{
-      const videos=data?.data?.videos||[];
-      if(!videos.length){profileVideos.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos</div>';return;}
-      profileVideos.innerHTML='';
-      videos.forEach(v=>{
-        const thumb=document.createElement('div');
-        thumb.className='profile-vid-thumb';
-        if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
-        // Click for desktop, touchend for Neural Band
-        const openVid=()=>{
-          if(!profileOpen) return;
-          const url=v.play, id=v.video_id;
-          profileOpen=false;
-          profileOverlay.classList.remove('open');
-          closeMenu();
-          setTimeout(()=>{
-            const existingIdx=vids.findIndex(x=>x.aweme_id===id);
-            if(existingIdx!==-1){show(existingIdx,true,1);return;}
-            const curr=vids[idx];
-            const newVid={aweme_id:id,videoUrl:url,title:'',author:curr.author,digg_count:0,share_count:0,comment_count:0,duration:60,region:'US',cover:''};
-            const insertAt=idx+1;
-            vids.splice(insertAt,0,newVid);
-            const reel=document.createElement('div');
-            reel.className='reel';
-            const video=document.createElement('video');
-            video.playsInline=true;video.preload='auto';video.muted=true;video.src=url;
-            video.setAttribute('webkit-playsinline','true');
-            video.addEventListener('playing',()=>{if(reel.classList.contains('active')){loader.classList.remove('show');if(userTouched&&video.muted){video.muted=false;video.volume=1;}}});
-            video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
-            reel.appendChild(video);
-            const allReels=feed.querySelectorAll('.reel');
-            if(insertAt<allReels.length) feed.insertBefore(reel,allReels[insertAt]);
-            else feed.appendChild(reel);
-            feed.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
-            show(insertAt,true,1);
-          },50);
-        };
-        thumb.addEventListener('click',openVid);
-        thumb.addEventListener('touchend',(e)=>{
-          // Only fire if it wasn't a scroll (touch didn't move much)
-          if(Math.abs(thumbTouchDy)<15) openVid();
-        });
-        thumbsEl_trackTouchForThumb(thumb);
-        profileVideos.appendChild(thumb);
-      });
-    }).catch(()=>{profileVideos.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load</div>';});
-}
-
-function closeProfile(){
-  profileOpen=false;
-  profileOverlay.classList.remove('open');
-}
-document.getElementById('profileClose').addEventListener('click',closeProfile);
-
-// Track thumb touch movement to distinguish tap vs scroll
-let thumbTouchDy=0, thumbTouchStartY=0;
-function thumbsEl_trackTouchForThumb(el){
-  el.addEventListener('touchstart',e=>{thumbTouchStartY=e.touches[0].clientY;thumbTouchDy=0;},{passive:true});
-  el.addEventListener('touchmove',e=>{thumbTouchDy=e.touches[0].clientY-thumbTouchStartY;},{passive:true});
-}
-
-// Profile overlay touch handling
-// — touchstart/touchend: always stopPropagation to block swipe handler
-// — touchmove: stopPropagation always, but only preventDefault outside the grid
-//   so the grid can scroll natively via touch-action:pan-y
-profileOverlay.addEventListener('touchstart',e=>{
-  e.stopPropagation();
-},{passive:false});
-profileOverlay.addEventListener('touchmove',e=>{
-  e.stopPropagation();
-  if(!e.target.closest('.profile-videos')){
-    e.preventDefault(); // block scroll on non-grid areas
-  }
-},{passive:false});
-profileOverlay.addEventListener('touchend',e=>{
-  e.stopPropagation();
-},{passive:false});
-profileOverlay.addEventListener('click',e=>e.stopPropagation());
-
-// ===== LONG PRESS → PROFILE =====
-let pressTimer=null,wasLongPress=false;
-card.addEventListener('touchstart',(e)=>{
-  if(profileOpen) return;
-  wasLongPress=false;
-  pressTimer=setTimeout(()=>{wasLongPress=true;openProfile();},600);
-},{passive:true});
 card.addEventListener('touchend',()=>{clearTimeout(pressTimer);pressTimer=null;});
 card.addEventListener('touchmove',()=>{clearTimeout(pressTimer);pressTimer=null;},{passive:true});
+
 card.addEventListener('click',(e)=>{
   e.stopPropagation();
-  if(profileOpen) return;
   if(wasLongPress) return;
   if(!menuOpen) openMenu(); else closeMenu();
 });
 
-// ===== MORE SHEET =====
-function openMore(){moreSheet.classList.add('open');moreBackdrop.classList.add('open');}
-function closeMore(){moreSheet.classList.remove('open');moreBackdrop.classList.remove('open');}
-btnMore.addEventListener('click',(e)=>{e.stopPropagation();openMore();});
-document.getElementById('moreCancel').addEventListener('click',closeMore);
-moreBackdrop.addEventListener('click',closeMore);
-document.getElementById('moreNext').addEventListener('click',()=>{closeMore();closeMenu();show(idx+1,true,1);});
-document.getElementById('moreCopyLink').addEventListener('click',()=>{
-  closeMore();if(!vids[idx])return;
-  const url='https://www.tiktok.com/@'+(vids[idx].author?.unique_id||'user')+'/video/'+vids[idx].aweme_id;
-  navigator.clipboard.writeText(url).then(()=>toast('Link copied!')).catch(()=>toast('Copy failed'));
-});
-document.getElementById('moreNotInterested').addEventListener('click',()=>{
-  closeMore();closeMenu();
-  if(vids[idx]){seenIds.add(vids[idx].aweme_id+'_skip');show(idx+1,true,1);toast('Got it');}
-});
-document.getElementById('moreProfile').addEventListener('click',()=>{closeMore();openProfile();});
-
 // ===== BUTTONS =====
-btnLike.addEventListener('click',(e)=>{e.stopPropagation();if(!vids[idx])return;const id=vids[idx].aweme_id;if(likedIds.has(id)){likedIds.delete(id);btnLike.classList.remove('liked');toast('Removed like');}else{likedIds.add(id);btnLike.classList.add('liked');toast('Liked!');}});
-btnShare.addEventListener('click',(e)=>{e.stopPropagation();if(!vids[idx])return;const d=vids[idx];const url='https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id;if(navigator.share)navigator.share({title:d.title||'TikTok',url}).catch(()=>{});else navigator.clipboard.writeText(url).then(()=>toast('Link copied!')).catch(()=>toast('Copy failed'));});
-btnSave.addEventListener('click',(e)=>{e.stopPropagation();if(!vids[idx])return;const id=vids[idx].aweme_id;if(savedIds.has(id)){savedIds.delete(id);btnSave.classList.remove('saved');toast('Unsaved');}else{savedIds.add(id);btnSave.classList.add('saved');toast('Saved!');}});
+btnLike.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  if(!vids[idx])return;
+  const id=vids[idx].aweme_id;
+  if(likedIds.has(id)){
+    likedIds.delete(id);btnLike.classList.remove('liked');toast('Removed like');
+  }else{
+    likedIds.add(id);btnLike.classList.add('liked');toast('Liked!');
+  }
+});
+btnShare.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  if(!vids[idx])return;
+  const d=vids[idx];
+  const url='https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id;
+  if(navigator.share)navigator.share({title:d.title||'TikTok',url}).catch(()=>{});
+  else navigator.clipboard.writeText(url)
+    .then(()=>toast('Link copied!'))
+    .catch(()=>toast('Clipboard unavailable'));
+});
+btnSave.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  if(!vids[idx])return;
+  const id=vids[idx].aweme_id;
+  if(savedIds.has(id)){
+    savedIds.delete(id);btnSave.classList.remove('saved');toast('Unsaved');
+  }else{
+    savedIds.add(id);btnSave.classList.add('saved');toast('Saved!');
+  }
+});
+// ===== MORE SHEET =====
+const moreSheet=document.getElementById('moreSheet');
+const moreBackdrop=document.getElementById('moreBackdrop');
 
-// ===== PROXY =====
+function openMore(){
+  moreSheet.classList.add('open');
+  moreBackdrop.classList.add('open');
+}
+function closeMore(){
+  moreSheet.classList.remove('open');
+  moreBackdrop.classList.remove('open');
+}
+
+btnMore.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  openMore();
+});
+document.getElementById('moreCancel').addEventListener('click',closeMore);
+document.getElementById('moreBackdrop').addEventListener('click',closeMore);
+
+document.getElementById('moreNext').addEventListener('click',()=>{
+  closeMore();
+  closeMenu();
+  show(idx+1,true,1);
+});
+
+document.getElementById('moreCopyLink').addEventListener('click',()=>{
+  closeMore();
+  if(!vids[idx]) return;
+  const d=vids[idx];
+  const url='https://www.tiktok.com/@'+(d.author?.unique_id||'user')+'/video/'+d.aweme_id;
+  navigator.clipboard.writeText(url)
+    .then(()=>toast('Link copied!'))
+    .catch(()=>toast('Clipboard unavailable'));
+});
+
+document.getElementById('moreNotInterested').addEventListener('click',()=>{
+  closeMore();
+  closeMenu();
+  if(vids[idx]){
+    seenIds.add(vids[idx].aweme_id+'_skip');
+    show(idx+1,true,1);
+    toast('Got it — showing less like this');
+  }
+});
+
+document.getElementById('moreProfile').addEventListener('click',()=>{
+  closeMore();
+  openProfile();
+});
+
+// ===== PROFILE OVERLAY =====
+profileOverlay.addEventListener('touchstart',e=>{e.stopPropagation();},{passive:false});
+profileOverlay.addEventListener('touchend',e=>{e.stopPropagation();},{passive:false});
+profileOverlay.addEventListener('touchmove',e=>{e.stopPropagation();},{passive:false});
+profileOverlay.addEventListener('click',e=>e.stopPropagation());
+
+function detachSwipeHandlers(){
+  window.removeEventListener('touchstart',onGlobalTouchStart);
+  window.removeEventListener('touchend',onGlobalTouchEnd);
+}
+function attachSwipeHandlers(){
+  window.addEventListener('touchstart',onGlobalTouchStart,{passive:true});
+  window.addEventListener('touchend',onGlobalTouchEnd,{passive:true});
+}
+
+async function openProfile(){
+  if(!vids[idx]) return;
+  const d=vids[idx];
+
+  document.getElementById('profileName').textContent=d.author?.nickname||d.author?.unique_id||'User';
+  document.getElementById('profileHandle').textContent='@'+(d.author?.unique_id||'user');
+  document.getElementById('profileStats').innerHTML=
+    '<div class="profile-stat"><div class="profile-stat-val">—</div><div class="profile-stat-lbl">Followers</div></div>'+
+    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.digg_count)+'</div><div class="profile-stat-lbl">Likes</div></div>'+
+    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.comment_count||0)+'</div><div class="profile-stat-lbl">Comments</div></div>';
+
+  const avEl=document.getElementById('profileAv');
+  avEl.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'<div class="profile-av-placeholder">👤</div>';
+
+  const thumbsEl=document.getElementById('profileVideos');
+  thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Loading videos...</div>';
+
+  profileOverlay.classList.add('open');
+  detachSwipeHandlers(); // HARD disable background swipe while profile open
+
+  try{
+    const handle=d.author?.unique_id;
+    if(!handle) throw new Error('no handle');
+    const res=await fetch('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=9&cursor=0&_='+Date.now());
+    const data=await res.json();
+    const videos=data?.data?.videos||data?.data?.aweme_list||[];
+
+    if(videos.length===0){
+      thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos found</div>';
+      return;
+    }
+
+    thumbsEl.innerHTML='';
+    videos.slice(0,9).forEach(v=>{
+      const thumb=document.createElement('div');
+      thumb.className='profile-vid-thumb';
+      if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
+      const handler=(e)=>{
+        e.stopPropagation();
+        e.preventDefault();
+        lastProfileTap=Date.now();
+        window._profileTapped=true;
+        playProfileVid(v.play, v.video_id);
+      };
+      thumb.addEventListener('touchstart',(e)=>{
+        e.stopPropagation();
+        window._profileTapped=false;
+      },{passive:false});
+      thumb.addEventListener('click', handler);
+      thumb.addEventListener('touchend', handler);
+      thumbsEl.appendChild(thumb);
+    });
+  }catch(e){
+    thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';
+  }
+}
+
+function closeProfile(){
+  profileOverlay.classList.remove('open');
+  attachSwipeHandlers(); // re-enable background swipe when profile closes
+}
+
+window.playProfileVid=function(videoUrl,videoId){
+  window._profileTapped=true;
+  profileOverlay.classList.remove('open');
+  attachSwipeHandlers();
+  closeMenu();
+
+  setTimeout(()=>{
+    const existingIdx=vids.findIndex(v=>v.aweme_id===videoId);
+    if(existingIdx!==-1){
+      show(existingIdx,true,1);
+      return;
+    }
+
+    const d=vids[idx];
+    const newVid={
+      aweme_id:videoId,
+      videoUrl:videoUrl,
+      title:'',
+      author:d.author,
+      digg_count:0,share_count:0,comment_count:0,
+      duration:60,region:'US',cover:''
+    };
+
+    const insertAt=idx+1;
+    vids.splice(insertAt,0,newVid);
+
+    const reel=document.createElement('div');
+    reel.className='reel';
+    const video=document.createElement('video');
+    video.playsInline=true;
+    video.preload='metadata';
+    video.muted=true;
+    video.setAttribute('playsinline','true');
+    video.setAttribute('webkit-playsinline','true');
+    video.src=videoUrl;
+    video.addEventListener('playing',()=>{
+      if(reel.classList.contains('active')){
+        loader.classList.remove('show');
+        if(userTouched&&video.muted){video.muted=false;video.volume=1;}
+      }
+    });
+    video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
+    reel.appendChild(video);
+
+    const allReels=feed.querySelectorAll('.reel');
+    if(insertAt<allReels.length){
+      feed.insertBefore(reel,allReels[insertAt]);
+    }else{
+      feed.appendChild(reel);
+    }
+
+    feed.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
+
+    show(insertAt,true,1);
+  },80);
+};
+
+document.getElementById('profileClose').addEventListener('click',closeProfile);
+
+card.addEventListener('touchstart',(e)=>{
+  wasLongPress=false;
+  pressTimer=setTimeout(()=>{
+    wasLongPress=true;
+    openProfile();
+  },600);
+},{passive:true});
 const PROXY='https://tiktok-proxy.mediastarr86.workers.dev';
 
-// ===== CACHE =====
-const CACHE_KEY='tiktok_vid_cache',CACHE_MAX=50;
-function saveCache(items){try{const ex=loadCache();const merged=[...ex,...items];const seen=new Set();const d=merged.filter(v=>{if(seen.has(v.aweme_id))return false;seen.add(v.aweme_id);return true;});localStorage.setItem(CACHE_KEY,JSON.stringify(d.slice(-CACHE_MAX)));}catch(e){}}
-function loadCache(){try{const c=localStorage.getItem(CACHE_KEY);if(!c)return[];const items=JSON.parse(c);for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}return items;}catch(e){return[];}}
+const CACHE_KEY='tiktok_vid_cache';
+const CACHE_MAX=50;
+function saveCache(items){
+  try{
+    const existing=loadCache();
+    const merged=[...existing,...items];
+    const seen=new Set();
+    const deduped=merged.filter(v=>{if(seen.has(v.aweme_id))return false;seen.add(v.aweme_id);return true;});
+    localStorage.setItem(CACHE_KEY,JSON.stringify(deduped.slice(-CACHE_MAX)));
+  }catch(e){}
+}
+function loadCache(){
+  try{
+    const c=localStorage.getItem(CACHE_KEY);
+    if(!c) return [];
+    const items=JSON.parse(c);
+    for(let i=items.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [items[i],items[j]]=[items[j],items[i]];
+    }
+    return items;
+  }catch(e){return [];}
+}
 
-// ===== DATA SOURCES =====
 const TAGS=['fyp','foryou','comedy','dance','storytime','lifehacks','funny','viral'];
-let tagPos=0,tier=0,tikwmCursor=0,rapidCursor=0;
+let tagPos=0;
+let tier=0;
+let tikwmCursor=0;
+let rapidCursor=0;
 
 async function loadFromTikWM(){
-  const endpoints=['https://www.tikwm.com/api/feed/list?region=US&count=20&language=en'+(tikwmCursor?'&cursor='+tikwmCursor:''),'https://tikwm.com/api/feed/list?region=US&count=20&language=en'+(tikwmCursor?'&cursor='+tikwmCursor:'')];
+  const endpoints=[
+    'https://www.tikwm.com/api/feed/list?region=US&count=20&language=en'+(tikwmCursor?'&cursor='+tikwmCursor:''),
+    'https://tikwm.com/api/feed/list?region=US&count=20&language=en'+(tikwmCursor?'&cursor='+tikwmCursor:''),
+  ];
   let lastErr;
-  for(const base of endpoints){try{const res=await fetch(base+'&_='+Date.now()+Math.random());const data=await res.json();if(!data.data||!data.data.length)throw new Error('empty');if(data.cursor)tikwmCursor=data.cursor;else tikwmCursor+=20;return(data.data||[]).map(v=>({aweme_id:v.video_id,videoUrl:v.play,title:v.title||'',author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||'',nickname:v.author?.nickname||''},digg_count:v.digg_count||0,share_count:v.share_count||0,comment_count:v.comment_count||0,duration:v.duration||15,region:v.region||'US',cover:v.cover||''}));}catch(e){lastErr=e;}}
+  for(const base of endpoints){
+    try{
+      const res=await fetch(base+'&_='+Date.now()+Math.random());
+      const data=await res.json();
+      if(data.code!==0||!data.data||!data.data.length) throw new Error(data.msg||'empty');
+      if(data.cursor) tikwmCursor=data.cursor; else tikwmCursor+=20;
+      return (data.data||[]).map(v=>({
+        aweme_id:v.video_id,
+        videoUrl:v.play,
+        title:v.title||'',
+        author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
+        digg_count:v.digg_count||0,
+        share_count:v.share_count||0,
+        comment_count:v.comment_count||0,
+        duration:v.duration||15,
+        region:v.region||'US'
+      }));
+    }catch(e){lastErr=e;}
+  }
   throw lastErr;
 }
-async function loadFromTikWMProxy(){const res=await fetch(PROXY+'/tikwm?cursor='+tikwmCursor);const data=await res.json();if(!data.data||!data.data.length)throw new Error('TikWM proxy: no data');if(data.cursor)tikwmCursor=data.cursor;else tikwmCursor+=20;return(data.data||[]).map(v=>({aweme_id:v.video_id,videoUrl:v.play,title:v.title||'',author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||'',nickname:v.author?.nickname||''},digg_count:v.digg_count||0,share_count:v.share_count||0,comment_count:v.comment_count||0,duration:v.duration||15,region:v.region||'US',cover:v.cover||''}));}
-async function loadFromRapidAPI(){const res=await fetch(PROXY+'/rapidapi?cursor='+rapidCursor);const data=await res.json();if(data.code!==0||!data.data?.videos)throw new Error('RapidAPI');rapidCursor=data.data.cursor||(rapidCursor+20);return(data.data.videos||[]).map(v=>({aweme_id:v.video_id,videoUrl:v.play,title:v.title||'',author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},digg_count:v.digg_count||0,share_count:v.share_count||0,comment_count:v.comment_count||0,duration:v.duration||15,region:v.region||'US'}));}
-async function loadFromSociaVault(){const tag=TAGS[tagPos%TAGS.length];tagPos++;const res=await fetch(PROXY+'/sociavault?tag='+encodeURIComponent(tag));const data=await res.json();if(data.success===false||data.error||!data.data?.aweme_list)throw new Error('SociaVault');return Object.values(data.data.aweme_list||{}).map(v=>{const videoUrl=Object.values(v.video?.play_addr?.url_list||{})[0];return{aweme_id:v.aweme_id,videoUrl,title:v.desc||'',author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:Object.values(v.author?.avatar_thumb?.url_list||{})[0]||''},digg_count:v.statistics?.digg_count||0,share_count:v.statistics?.share_count||0,comment_count:v.statistics?.comment_count||0,duration:v.video?.duration||0,region:v.region||''};})}
-async function loadFromApify(){const tag=TAGS[tagPos%TAGS.length];tagPos++;const res=await fetch(PROXY+'/apify?hashtag='+encodeURIComponent(tag));const data=await res.json();if(!Array.isArray(data)||data.length===0)throw new Error('Apify');return data.map(v=>({aweme_id:String(v.id||v.videoId||Math.random()),videoUrl:v.videoUrl||v.mediaUrls?.[0]||'',title:v.text||v.title||'',author:{unique_id:v.authorMeta?.name||'user',avatar:v.authorMeta?.avatar||''},digg_count:v.diggCount||0,share_count:v.shareCount||0,comment_count:v.commentCount||0,duration:v.videoMeta?.duration||15,region:'US'}));}
+
+async function loadFromTikWMProxy(){
+  const res=await fetch(PROXY+'/tikwm?cursor='+tikwmCursor);
+  const data=await res.json();
+  if(!data.data||!data.data.length) throw new Error('TikWM proxy: no data');
+  if(data.cursor) tikwmCursor=data.cursor; else tikwmCursor+=20;
+  return (data.data||[]).map(v=>({
+    aweme_id:v.video_id,
+    videoUrl:v.play,
+    title:v.title||'',
+    author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||'',nickname:v.author?.nickname||''},
+    digg_count:v.digg_count||0,
+    share_count:v.share_count||0,
+    comment_count:v.comment_count||0,
+    duration:v.duration||15,
+    region:v.region||'US',
+    cover:v.cover||''
+  }));
+}
+
+async function loadFromRapidAPI(){
+  const res=await fetch(PROXY+'/rapidapi?cursor='+rapidCursor);
+  const data=await res.json();
+  if(data.code!==0||!data.data?.videos) throw new Error('RapidAPI: '+(data.msg||'no data'));
+  rapidCursor=data.data.cursor||(rapidCursor+20);
+  return (data.data.videos||[]).map(v=>({
+    aweme_id:v.video_id,
+    videoUrl:v.play,
+    title:v.title||'',
+    author:{unique_id:v.author?.unique_id||'user',avatar:v.author?.avatar||''},
+    digg_count:v.digg_count||0,
+    share_count:v.share_count||0,
+    comment_count:v.comment_count||0,
+    duration:v.duration||15,
+    region:v.region||'US'
+  }));
+}
+
+async function loadFromSociaVault(){
+  const tag=TAGS[tagPos%TAGS.length];tagPos++;
+  const res=await fetch(PROXY+'/sociavault?tag='+encodeURIComponent(tag));
+  const data=await res.json();
+  if(data.success===false||data.error||!data.data?.aweme_list) throw new Error('SociaVault: '+(data.error||'no data'));
+  return Object.values(data.data.aweme_list||{}).map(v=>{
+    const videoUrl=Object.values(v.video?.play_addr?.url_list||{})[0];
+    return {
+      aweme_id:v.aweme_id,
+      videoUrl,
+      title:v.desc||'',
+      author:{unique_id:v.author?.unique_id||v.author?.nickname||'user',avatar:Object.values(v.author?.avatar_thumb?.url_list||{})[0]||''},
+      digg_count:v.statistics?.digg_count||0,
+      share_count:v.statistics?.share_count||0,
+      comment_count:v.statistics?.comment_count||0,
+      duration:v.video?.duration||0,
+      region:v.region||''
+    };
+  });
+}
+
+async function loadFromApify(){
+  const tag=TAGS[tagPos%TAGS.length];tagPos++;
+  const res=await fetch(PROXY+'/apify?hashtag='+encodeURIComponent(tag));
+  const data=await res.json();
+  if(!Array.isArray(data)||data.length===0) throw new Error('Apify: no data');
+  return data.map(v=>({
+    aweme_id:String(v.id||v.videoId||Math.random()),
+    videoUrl:v.videoUrl||v.mediaUrls?.[0]||'',
+    title:v.text||v.title||'',
+    author:{unique_id:v.authorMeta?.name||'user',avatar:v.authorMeta?.avatar||''},
+    digg_count:v.diggCount||v.likes||0,
+    share_count:v.shareCount||0,
+    comment_count:v.commentCount||0,
+    duration:v.videoMeta?.duration||15,
+    region:'US'
+  }));
+}
 
 function addToFeed(items){
   let added=0;
+  const feedEl=document.getElementById('feed');
   for(const v of items){
-    if(seenIds.has(v.aweme_id))continue;
-    if(v.region&&v.region!=='US')continue;
-    if(v.duration===0||v.duration>60)continue;
-    if(!v.videoUrl||!v.videoUrl.includes('tiktokcdn'))continue;
-    seenIds.add(v.aweme_id);vids.push(v);
-    const reel=document.createElement('div');reel.className='reel';reel.style.top=(vids.length-1)*100+'%';
-    const video=document.createElement('video');video.playsInline=true;video.preload='none';video.muted=true;video.setAttribute('webkit-playsinline','true');
-    video.addEventListener('playing',()=>{if(reel.classList.contains('active')){loader.classList.remove('show');if(userTouched&&video.muted){video.muted=false;video.volume=1;}}});
+    if(seenIds.has(v.aweme_id)) continue;
+    if(v.region&&v.region!=='US') continue;
+    if(v.duration===0||v.duration>60) continue;
+    if(!v.videoUrl||!v.videoUrl.startsWith('http')) continue;
+    seenIds.add(v.aweme_id);
+    vids.push(v);
+    const reel=document.createElement('div');
+    reel.className='reel';
+    reel.style.top=(vids.length-1)*100+'%';
+    const video=document.createElement('video');
+    video.playsInline=true;video.preload='metadata';video.muted=true;
+    video.setAttribute('playsinline','true');
+    video.setAttribute('webkit-playsinline','true');
+    video.addEventListener('playing',()=>{
+      if(reel.classList.contains('active')){
+        loader.classList.remove('show');
+        if(userTouched&&video.muted){video.muted=false;video.volume=1;}
+      }
+    });
     video.addEventListener('ended',()=>{video.currentTime=0;video.play().catch(()=>{});});
-    reel.appendChild(video);feed.appendChild(reel);added++;
+    reel.appendChild(video);
+    feedEl.appendChild(reel);
+    added++;
   }
   return added;
 }
 
 async function loadBatch(){
   if(loading){loadPending=true;return 0;}
-  loading=true;let totalAdded=0;
+  loading=true;
+  let totalAdded=0;
   try{
     let rawItems;
     while(true){
       try{
-        if(tier===0)rawItems=await loadFromTikWM();
-        else if(tier===1)rawItems=await loadFromTikWMProxy();
-        else if(tier===2)rawItems=await loadFromRapidAPI();
-        else if(tier===3)rawItems=await loadFromSociaVault();
+        if(tier===0) rawItems=await loadFromTikWM();
+        else if(tier===1) rawItems=await loadFromTikWMProxy();
+        else if(tier===2) rawItems=await loadFromRapidAPI();
+        else if(tier===3) rawItems=await loadFromSociaVault();
         else rawItems=await loadFromApify();
         break;
-      }catch(e){if(tier>=4)throw e;tier++;}
+      }catch(e){
+        if(tier>=4) throw e;
+        tier++;
+      }
     }
     totalAdded=addToFeed(rawItems);
     saveCache(vids.map(v=>({...v})));
-  }catch(e){console.error('all sources failed',e);}
-  loading=false;if(loadPending)loadPending=false;
+  }catch(e){console.error('loadBatch error — all sources failed',e);}
+  loading=false;
+  if(loadPending){loadPending=false;}
   return totalAdded;
 }
 
 function preloadAhead(){
   const reels=document.querySelectorAll('.reel');
-  for(let o=1;o<=3;o++){const ni=idx+o;if(ni<vids.length&&reels[ni]){const v=reels[ni].querySelector('video');if(!v.src){v.src=vids[ni].videoUrl;v.preload='auto';v.load();}}}
+  for(let o=1;o<=2;o++){
+    const ni=idx+o;
+    if(ni<vids.length&&reels[ni]){
+      const v=reels[ni].querySelector('video');
+      if(!v.src){v.src=vids[ni].videoUrl;v.preload='auto';v.load();}
+    }
+  }
 }
-
 async function show(i,animate=false,dir=1){
-  if(i>=vids.length){await loadBatch();if(i>=vids.length)i=vids.length-1;}
-  if(i<0)i=0;idx=i;
+  wasLongPress=false;
+  if(i>=vids.length){
+    await loadBatch();
+    if(i>=vids.length)i=vids.length-1;
+  }
+  if(i<0)i=0;
+  idx=i;
   const reels=document.querySelectorAll('.reel');
+
   if(animate){
     feed.classList.add('swiping');
     feed.style.transform='translateY('+(-(idx-dir)*100)+'%)';
-    feed.classList.remove('swiping');
-    feed.getBoundingClientRect();
-    feed.style.transform='translateY('+(-(idx*100))+'%)';
+    requestAnimationFrame(()=>{
+      feed.classList.remove('swiping');
+      feed.style.transform='translateY('+(-(idx*100))+'%)';
+    });
   }else{
     feed.style.transform='translateY('+(-(idx*100))+'%)';
   }
+
   reels.forEach((r,n)=>{
     const isActive=n===idx;
     r.classList.toggle('active',isActive);
     const vid=r.querySelector('video');
     if(isActive){
       loader.classList.add('show');
-      if(!vid.src)vid.src=vids[n].videoUrl;
-      vid.preload='auto';vid.muted=false;vid.volume=1;
-      const tryPlay=()=>{vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});};
-      if(vid.readyState>=2)tryPlay();
-      else{const h=()=>{vid.removeEventListener('canplay',h);tryPlay();};vid.addEventListener('canplay',h);vid.load();}
+      if(!vid.src) vid.src=vids[n].videoUrl;
+      vid.preload='auto';
+      vid.muted=false;vid.volume=1;
+      const tryPlay=()=>{
+        vid.play().catch(()=>{
+          vid.muted=true;
+          vid.play().catch(()=>{});
+        });
+      };
+      if(vid.readyState>=3) tryPlay();
+      else if(vid.readyState>=2) tryPlay();
+      else{
+        const h=()=>{vid.removeEventListener('canplay',h);tryPlay();};
+        vid.addEventListener('canplay',h);
+        if(!vid.src) vid.load();
+      }
       updateOverlay(vids[n]);
       preloadAhead();
-      if(n>=vids.length-3)loadBatch();
+      if(n>=vids.length-3 && !loading) loadBatch();
     }else{
       vid.pause();
-      if(Math.abs(n-idx)>6)vid.removeAttribute('src');
+      if(Math.abs(n-idx)>6){
+        vid.removeAttribute('src');
+        vid.load();
+      }
     }
   });
 }
@@ -525,37 +831,58 @@ document.getElementById('splash').addEventListener('click',async(e)=>{
   document.getElementById('splash').style.display='none';
   document.body.classList.add('ready');
   loader.classList.add('show');
+
   const cached=loadCache();
-  if(cached.length>0){addToFeed(cached);await show(0);}
+  if(cached.length>0){
+    addToFeed(cached);
+  }
+
   await loadBatch();
-  if(cached.length===0)await show(0);
+  await show(0);
+
   const v=document.querySelector('.reel.active video');
   if(v){v.muted=false;v.volume=1;}
 },{once:true});
 
-// ===== SWIPE =====
+// ===== SWIPE with smooth animation =====
 let sx=0,sy=0;
-addEventListener('touchstart',e=>{
-  if(profileOpen)return; // hard block
-  if(moreSheet.classList.contains('open'))return;
-  sx=e.touches[0].clientX;sy=e.touches[0].clientY;
-},{passive:true});
-addEventListener('touchend',e=>{
-  if(profileOpen)return; // hard block
-  if(moreSheet.classList.contains('open'))return;
-  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
-  const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
-  if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
-  if(isSwipe){if(dy>50)show(idx+1,true,1);else show(idx-1,true,-1);}
-},{passive:true});
 
+function onGlobalTouchStart(e){
+  sx=e.touches[0].clientX;sy=e.touches[0].clientY;
+}
+function onGlobalTouchEnd(e){
+  if(Date.now()-lastProfileTap<300) return;
+  const dx=e.changedTouches[0].clientX-sx;
+  const dy=e.changedTouches[0].clientY-sy;
+  const isSwipe=Math.abs(dy)>40&&Math.abs(dy)>Math.abs(dx)*0.7;
+  if(moreSheet.classList.contains('open')){
+    if(isSwipe) closeMore();
+    return;
+  }
+  if(menuOpen){
+    if(isSwipe) closeMenu();
+    return;
+  }
+  if(isSwipe){
+    if(dy>40) show(idx+1,true,1);
+    else show(idx-1,true,-1);
+  }
+}
+
+attachSwipeHandlers();
+
+// ===== KEYBOARD =====
 addEventListener('keydown',e=>{
   if(!userTouched)userTouched=true;
-  if(profileOpen){if(e.key==='Escape')closeProfile();return;}
-  if(menuOpen){if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}return;}
-  if(e.key==='ArrowDown')show(idx+1,true,1);
-  if(e.key==='ArrowUp')show(idx-1,true,-1);
+  if(menuOpen){
+    if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}
+    return;
+  }
+  if(e.key==='ArrowDown') show(idx+1,true,1);
+  if(e.key==='ArrowUp') show(idx-1,true,-1);
 });
+
+document.getElementById('profileClose').addEventListener('click',closeProfile);
 </script>
 </body>
 </html>
