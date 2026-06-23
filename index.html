@@ -297,14 +297,16 @@ function playProfileVid(videoUrl,videoId){
   },50);
 }
 
-// Profile overlay: block everything EXCEPT native pan-y inside the grid
+// Profile overlay touch handling
+// touchstart: ONLY stopPropagation — never preventDefault (kills tap sequence)
+// touchmove: preventDefault outside grid (blocks swipe), let grid scroll natively
+// touchend: ONLY stopPropagation
 profileOverlay.addEventListener('touchstart',e=>{
-  if(!e.target.closest('.profile-videos')&&!e.target.closest('.profile-close')) e.preventDefault();
   e.stopPropagation();
 },{passive:false});
 profileOverlay.addEventListener('touchmove',e=>{
-  if(!e.target.closest('.profile-videos')) e.preventDefault();
   e.stopPropagation();
+  if(!e.target.closest('.profile-videos')) e.preventDefault();
 },{passive:false});
 profileOverlay.addEventListener('touchend',e=>{
   e.stopPropagation();
