@@ -1038,10 +1038,13 @@ async function show(i,animate=false,dir=1){
           overlay.addEventListener('touchend',e=>{
             const dx=e.changedTouches[0].clientX-_sx;
             const dy=e.changedTouches[0].clientY-_sy;
-            if(Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx)){
+            const absX=Math.abs(dx),absY=Math.abs(dy);
+            if(absY>50&&absY>absX){
               if(dy<-50) show(idx+1,true,1);
               else if(dy>50) show(idx-1,true,-1);
-            } else {
+            } else if(absX>50&&absX>absY&&dx>50){
+              openMenu(); // swipe right = open menu
+            } else if(absX<10&&absY<10){
               // short tap = toggle menu
               if(!menuOpen) openMenu(); else closeMenu();
             }
@@ -1138,11 +1141,18 @@ addEventListener('touchend',e=>{
   if(profileOverlay.classList.contains('open')) return;
   if(moreSheet.classList.contains('open')) return;
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
-  const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
-  if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
-  if(isSwipe){
+  const absX=Math.abs(dx),absY=Math.abs(dy);
+  const isVertSwipe=absY>50&&absY>absX;
+  const isHorizSwipe=absX>50&&absX>absY;
+  if(menuOpen){
+    if(isVertSwipe&&dy<-50) closeMenu();
+    return;
+  }
+  if(isVertSwipe){
     if(dy<-50) show(idx+1,true,1);   // swipe up = next video
     else if(dy>50) show(idx-1,true,-1); // swipe down = previous video
+  } else if(isHorizSwipe&&dx>50){
+    openMenu(); // swipe right = open menu
   }
 },{passive:true});
 
