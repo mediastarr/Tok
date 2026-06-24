@@ -373,42 +373,74 @@ async function openProfile(){
   sx=-9999;sy=-9999;
   profileOverlay.classList.add('open');
 
-  try{
-    const handle=d.author?.unique_id;
-    if(!handle) throw new Error('no handle');
-    const res=await fetchFast('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=10&cursor=0&_='+Date.now());
-    const data=await res.json();
-    const videos=data?.data?.videos||[];
-
-    if(videos.length===0){
-      thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos found</div>';
-      return;
+  if(d._ytShort){
+    // ── YouTube creator: search their channel for Shorts ──────────────────
+    try{
+      const channelTitle=d.author?.unique_id||d.author?.nickname||'';
+      if(!channelTitle) throw new Error('no channel name');
+      const params=new URLSearchParams({
+        part:'snippet',q:channelTitle+' #shorts',type:'video',
+        videoDuration:'short',videoEmbeddable:'true',maxResults:10,key:'PLACEHOLDER'
+      });
+      const searchData=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+params);
+      const items=searchData.items||[];
+      if(!items.length){
+        thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos found</div>';
+        return;
+      }
+      thumbsEl.innerHTML='';
+      items.forEach(v=>{
+        const ytId=v.id.videoId;
+        const thumb=document.createElement('div');
+        thumb.className='profile-vid-thumb';
+        const cover=v.snippet.thumbnails?.high?.url||v.snippet.thumbnails?.default?.url||'';
+        if(cover) thumb.innerHTML='<img src="'+cover+'" loading="lazy">';
+        const handler=(e)=>{
+          e.stopPropagation();e.preventDefault();
+          lastProfileTap=Date.now();
+          window._profileTapped=true;
+          playProfileYT(ytId);
+        };
+        thumb.addEventListener('touchstart',(e)=>{e.stopPropagation();window._profileTapped=false;lastProfileTap=Date.now();},{passive:false});
+        thumb.addEventListener('click',handler);
+        thumb.addEventListener('touchend',handler);
+        thumbsEl.appendChild(thumb);
+      });
+    }catch(e){
+      thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';
     }
-
-    thumbsEl.innerHTML='';
-    videos.slice(0,10).forEach(v=>{
-      const thumb=document.createElement('div');
-      thumb.className='profile-vid-thumb';
-      if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
-      const videoUrl=v.wmplay||v.play;
-      const handler=(e)=>{
-        e.stopPropagation();
-        e.preventDefault();
-        lastProfileTap=Date.now();
-        window._profileTapped=true;
-        playProfileVid(videoUrl, v.video_id);
-      };
-      thumb.addEventListener('touchstart',(e)=>{
-        e.stopPropagation();
-        window._profileTapped=false;
-        lastProfileTap=Date.now();
-      },{passive:false});
-      thumb.addEventListener('click', handler);
-      thumb.addEventListener('touchend', handler);
-      thumbsEl.appendChild(thumb);
-    });
-  }catch(e){
-    thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';
+  }else{
+    // ── TikTok creator: fetch via TikWM ───────────────────────────────────
+    try{
+      const handle=d.author?.unique_id;
+      if(!handle) throw new Error('no handle');
+      const res=await fetchFast('https://www.tikwm.com/api/user/posts?unique_id='+encodeURIComponent(handle)+'&count=10&cursor=0&_='+Date.now());
+      const data=await res.json();
+      const videos=data?.data?.videos||[];
+      if(videos.length===0){
+        thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos found</div>';
+        return;
+      }
+      thumbsEl.innerHTML='';
+      videos.slice(0,10).forEach(v=>{
+        const thumb=document.createElement('div');
+        thumb.className='profile-vid-thumb';
+        if(v.cover) thumb.innerHTML='<img src="'+v.cover+'" loading="lazy">';
+        const videoUrl=v.wmplay||v.play;
+        const handler=(e)=>{
+          e.stopPropagation();e.preventDefault();
+          lastProfileTap=Date.now();
+          window._profileTapped=true;
+          playProfileVid(videoUrl,v.video_id);
+        };
+        thumb.addEventListener('touchstart',(e)=>{e.stopPropagation();window._profileTapped=false;lastProfileTap=Date.now();},{passive:false});
+        thumb.addEventListener('click',handler);
+        thumb.addEventListener('touchend',handler);
+        thumbsEl.appendChild(thumb);
+      });
+    }catch(e){
+      thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';
+    }
   }
 }
 
@@ -477,6 +509,38 @@ window.playProfileVid=function(videoUrl,videoId){
 };
 
 document.getElementById('profileClose').addEventListener('click',closeProfile);
+
+// Play a YouTube Short tapped from the profile overlay
+window.playProfileYT=function(ytId){
+  window._profileTapped=true;
+  profileOverlay.classList.remove('open');
+  closeMenu();
+  setTimeout(()=>{
+    profileOpen=false;
+    const awemeId='yt_'+ytId;
+    const existingIdx=vids.findIndex(v=>v.aweme_id===awemeId);
+    if(existingIdx!==-1){show(existingIdx,true,1);return;}
+    const d=vids[idx];
+    const newVid={
+      aweme_id:awemeId,ytVideoId:ytId,_ytShort:true,
+      videoUrl:'',title:'',
+      author:d.author,
+      digg_count:0,share_count:0,comment_count:0,
+      duration:30,region:'US',cover:''
+    };
+    const insertAt=idx+1;
+    vids.splice(insertAt,0,newVid);
+    const reel=document.createElement('div');
+    reel.className='reel';
+    reel.dataset.ytId=ytId;
+    reel.dataset.ytReady='0';
+    const allReels=feed.querySelectorAll('.reel');
+    if(insertAt<allReels.length) feed.insertBefore(reel,allReels[insertAt]);
+    else feed.appendChild(reel);
+    feed.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
+    show(insertAt,true,1);
+  },80);
+};
 
 card.addEventListener('touchstart',(e)=>{
   wasLongPress=false;
@@ -888,10 +952,11 @@ function preloadAhead(){
   for(let o=1;o<=3;o++){
     const ni=idx+o;
     if(ni<vids.length&&reels[ni]){
+      if(vids[ni]?._ytShort) continue; // YT Shorts use iframes, no preload needed
       const v=reels[ni].querySelector('video');
-      if(!v.src){
+      if(v&&!v.src){
         v.src=vids[ni].videoUrl;
-        v.preload='auto'; // FIX 2: was missing — actually buffer the data
+        v.preload='auto';
         v.load();
       }
     }
@@ -932,7 +997,6 @@ async function show(i,animate=false,dir=1){
   reels.forEach((r,n)=>{
     const isActive=n===idx;
     r.classList.toggle('active',isActive);
-    const vid=r.querySelector('video');
     if(isActive){
       loader.classList.add('show');
 
