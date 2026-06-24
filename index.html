@@ -1028,6 +1028,8 @@ async function show(i,animate=false,dir=1){
           iframe.style.cssText='width:100%;height:100%;border:none;position:absolute;inset:0';
           r.appendChild(iframe);
           r.dataset.ytReady='1';
+          // Signal pre-warm cleanup
+          document.dispatchEvent(new Event('ytShortActivated'));
           // Transparent overlay captures touch so iframe doesn't swallow swipes
           const overlay=document.createElement('div');
           overlay.className='yt-touch';
@@ -1104,6 +1106,28 @@ async function show(i,animate=false,dir=1){
   });
 }
 
+// ── Pre-warm: runs immediately on page load, before the user taps ────────────
+(function prewarm(){
+  // 1. Silent background fetch — populate vids[] and set video src so
+  //    the browser starts buffering before the tap.
+  loadBatch().catch(()=>{});
+
+  // 2. YouTube player pre-warm — inject a hidden off-screen iframe so the
+  //    browser pre-establishes the youtube.com connection, loads player JS,
+  //    and resolves DNS. The iframe is removed once the first real YT reel
+  //    activates (or after 30 s to avoid wasting resources).
+  const ytWarm=document.createElement('iframe');
+  ytWarm.src='https://www.youtube.com/embed/?enablejsapi=1&autoplay=0&mute=1';
+  ytWarm.allow='autoplay';
+  ytWarm.style.cssText='position:fixed;width:1px;height:1px;top:-9999px;left:-9999px;border:none;pointer-events:none;opacity:0;';
+  ytWarm.setAttribute('aria-hidden','true');
+  document.body.appendChild(ytWarm);
+  window._ytWarmIframe=ytWarm;
+  const cleanup=()=>{if(ytWarm.parentNode){ytWarm.parentNode.removeChild(ytWarm);window._ytWarmIframe=null;}};
+  setTimeout(cleanup,30000); // remove after 30 s if never needed
+  document.addEventListener('ytShortActivated',cleanup,{once:true});
+})();
+
 document.getElementById('splash').addEventListener('click',async(e)=>{
   e.stopPropagation();
   userTouched=true;
@@ -1117,7 +1141,10 @@ document.getElementById('splash').addEventListener('click',async(e)=>{
     await show(0);
   }
 
-  await loadBatch();
+  // If prewarm already fetched videos, addToFeed was called — avoid double-load
+  if(vids.length===0){
+    await loadBatch();
+  }
 
   if(cached.length===0) await show(0);
 
