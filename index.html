@@ -29,7 +29,6 @@ body.menu-active .card{height:48vh}
   position:absolute;inset:0;
   transition:transform .32s cubic-bezier(.4,0,.2,1);
 }
-#feed.swiping{transition:none}
 .reel{position:absolute;left:0;width:100%;height:100%;background:#000}
 .reel video{width:100%;height:100%;object-fit:cover}
 
@@ -869,9 +868,11 @@ function addToFeed(items){
   const feedEl=document.getElementById('feed');
   for(const v of items){
     if(seenIds.has(v.aweme_id)) continue;
-    if(v.region&&v.region!=='US') continue;
     if(!v._ytShort){
-      if(v.duration===0||v.duration>60) continue;
+      // Only filter region if it's explicitly set to a non-US value (not empty/missing)
+      if(v.region&&v.region!=='US'&&v.region!=='') continue;
+      // Allow duration=0 (unknown) but drop clearly too-long videos
+      if(v.duration>60) continue;
       if(!v.videoUrl) continue;
       if(v.videoUrl.endsWith('.mp3')) continue;
       if(!v.videoUrl.startsWith('http')) continue;
@@ -983,15 +984,18 @@ async function show(i,animate=false,dir=1){
   // Clear any pending skip timer from previous video
   if(currentSkipTimer){clearTimeout(currentSkipTimer);currentSkipTimer=null;}
 
+  const target='translateY('+(-(idx*100))+'%)';
   if(animate){
-    feed.classList.add('swiping');
-    feed.style.transform='translateY('+((-(idx-dir)*100))+'%)';
-    feed.classList.remove('swiping');
-    feed.getBoundingClientRect();
-    feed.classList.remove('swiping');
-    feed.style.transform='translateY('+(-(idx*100))+'%)';
+    // Snap to start position instantly, then let transition carry to target
+    const from='translateY('+(-(( idx-dir)*100))+'%)';
+    feed.style.transition='none';
+    feed.style.transform=from;
+    feed.getBoundingClientRect(); // force reflow
+    feed.style.transition='transform .32s cubic-bezier(.4,0,.2,1)';
+    feed.style.transform=target;
   }else{
-    feed.style.transform='translateY('+(-(idx*100))+'%)';
+    feed.style.transition='none';
+    feed.style.transform=target;
   }
 
   reels.forEach((r,n)=>{
