@@ -964,8 +964,6 @@ function preloadAhead(){
   }
 }
 
-let currentSkipTimer=null;
-
 async function show(i,animate=false,dir=1){
   // If we're at or past the end, load more first
   if(i>=vids.length){
@@ -980,9 +978,6 @@ async function show(i,animate=false,dir=1){
 
   // Re-query AFTER loadBatch so newly added reels are included
   const reels=document.querySelectorAll('.reel');
-
-  // Clear any pending skip timer from previous video
-  if(currentSkipTimer){clearTimeout(currentSkipTimer);currentSkipTimer=null;}
 
   const target='translateY('+(-(idx*100))+'%)';
   if(animate){
@@ -1030,14 +1025,6 @@ async function show(i,animate=false,dir=1){
           if(iframe) iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}','*');
           loader.classList.remove('show');
         }
-        // 4s skip timer for iframes too (in case embed fails)
-        currentSkipTimer=setTimeout(()=>{
-          const iframe=r.querySelector('iframe');
-          if(iframe&&r.classList.contains('active')){
-            console.warn('YT iframe stuck, skipping');
-            show(idx+1,true,1);
-          }
-        },4000);
       }else{
         // ── Regular video path ───────────────────────────────────
         const vid=r.querySelector('video');
@@ -1050,18 +1037,8 @@ async function show(i,animate=false,dir=1){
         const tryPlay=()=>{
           if(played) return;
           played=true;
-          clearTimeout(currentSkipTimer);
-          currentSkipTimer=null;
           vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
         };
-
-        // 4-second hard timeout — auto-skip if video never loads
-        currentSkipTimer=setTimeout(()=>{
-          if(!played){
-            console.warn('Video stuck, skipping:',vid.src);
-            show(idx+1,true,1);
-          }
-        },4000);
 
         if(vid.readyState>=3){
           tryPlay();
