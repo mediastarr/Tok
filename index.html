@@ -910,8 +910,9 @@ function addToFeed(items){
     }else{
       const video=document.createElement('video');
       video.playsInline=true;
-      video.preload='metadata';
+      video.preload='auto';
       video.muted=true;
+      video.src=v.videoUrl;
       video.setAttribute('webkit-playsinline','true');
       video.addEventListener('playing',()=>{
         if(reel.classList.contains('active')){
@@ -960,16 +961,15 @@ async function loadBatch(){
   return totalAdded;
 }
 
-// FIX 2: actually set src + call load() so buffering starts before user arrives
+// Preload up to 5 videos ahead — src already set in addToFeed, just ensure preload=auto
 function preloadAhead(){
   const reels=document.querySelectorAll('.reel');
-  for(let o=1;o<=3;o++){
+  for(let o=1;o<=5;o++){
     const ni=idx+o;
     if(ni<vids.length&&reels[ni]){
       if(vids[ni]?._ytShort) continue; // YT Shorts use iframes, no preload needed
       const v=reels[ni].querySelector('video');
-      if(v&&!v.src){
-        v.src=vids[ni].videoUrl;
+      if(v&&v.preload!=='auto'){
         v.preload='auto';
         v.load();
       }
@@ -1065,8 +1065,7 @@ async function show(i,animate=false,dir=1){
         // ── Regular video path ───────────────────────────────────
         const vid=r.querySelector('video');
         if(!vid) return;
-        if(!vid.src) vid.src=vids[n].videoUrl;
-        vid.preload='auto';
+        // src already set in addToFeed — no need to set again
         vid.muted=false;vid.volume=1;
 
         let played=false;
@@ -1084,7 +1083,6 @@ async function show(i,animate=false,dir=1){
             tryPlay();
           };
           vid.addEventListener('canplay',h);
-          vid.load();
         }
       }
 
