@@ -1135,26 +1135,7 @@ async function show(i,animate=false,dir=1){
 
 document.getElementById('splash').addEventListener('click',async(e)=>{
   e.stopPropagation();
-  userTouched=true;
-  document.getElementById('splash').style.display='none';
-  document.body.classList.add('ready');
-  loader.classList.add('show');
-
-  const cached=loadCache();
-  if(cached.length>0){
-    addToFeed(cached);
-    await show(0);
-  }
-
-  // If prewarm already fetched videos, addToFeed was called — avoid double-load
-  if(vids.length===0){
-    await loadBatch();
-  }
-
-  if(cached.length===0) await show(0);
-
-  const v=document.querySelector('.reel.active video');
-  if(v){v.muted=false;v.volume=1;}
+  await dismissSplash();
 },{once:true});
 
 let sx=0,sy=0;
@@ -1180,8 +1161,23 @@ addEventListener('touchend',e=>{
   }
 },{passive:true});
 
-addEventListener('keydown',e=>{
-  if(!userTouched)userTouched=true;
+async function dismissSplash(){
+  if(userTouched) return;
+  userTouched=true;
+  document.getElementById('splash').style.display='none';
+  document.body.classList.add('ready');
+  loader.classList.add('show');
+  const cached=loadCache();
+  if(cached.length>0){addToFeed(cached);await show(0);}
+  if(vids.length===0){await loadBatch();}
+  if(cached.length===0) await show(0);
+  const v=document.querySelector('.reel.active video');
+  if(v){v.muted=false;v.volume=1;}
+}
+
+addEventListener('keydown',async e=>{
+  // Any Neural Band input dismisses the splash
+  if(!userTouched){await dismissSplash();return;}
   if(menuOpen){if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}return;}
   if(e.key==='ArrowDown') show(idx+1,true,1);
   if(e.key==='ArrowUp') show(idx-1,true,-1);
