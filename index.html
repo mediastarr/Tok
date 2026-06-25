@@ -1185,6 +1185,10 @@ addEventListener('keydown',e=>{
   if(menuOpen){if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}return;}
   if(e.key==='ArrowDown') show(idx+1,true,1);
   if(e.key==='ArrowUp') show(idx-1,true,-1);
+  if(e.key==='ArrowRight'&&vids[idx]?._ytShort){
+    const iframe=document.querySelector('.reel.active iframe');
+    if(iframe) iframe.focus();
+  }
 });
 </script>
 </body>
