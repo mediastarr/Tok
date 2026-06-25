@@ -139,9 +139,9 @@ body.menu-active .menu-actions{display:flex}
 .more-backdrop.open{display:block}
 </style>
 </head>
-<body>
+<body tabindex="-1">
 
-<div class="splash" id="splash">
+<div class="splash" id="splash" tabindex="0" autofocus>
   <div class="splash-icon">▶</div>
   <div class="splash-text">Tap to Start</div>
 </div>
@@ -1097,6 +1097,9 @@ async function show(i,animate=false,dir=1){
       preloadAhead();
       // Trigger next batch earlier — when 5 videos remain
       if(n>=vids.length-5) loadBatch();
+      // Return focus to body so Neural Band keydowns keep routing to window
+      // (ArrowRight will explicitly focus the iframe when needed)
+      if(userTouched) document.body.focus();
     }else{
       // Deactivate — pause video or pause YT iframe
       if(vids[n]?._ytShort){
@@ -1166,6 +1169,7 @@ async function dismissSplash(){
   userTouched=true;
   document.getElementById('splash').style.display='none';
   document.body.classList.add('ready');
+  document.body.focus();
   loader.classList.add('show');
   const cached=loadCache();
   if(cached.length>0){addToFeed(cached);await show(0);}
@@ -1173,6 +1177,7 @@ async function dismissSplash(){
   if(cached.length===0) await show(0);
   const v=document.querySelector('.reel.active video');
   if(v){v.muted=false;v.volume=1;}
+  document.body.focus();
 }
 
 addEventListener('keydown',async e=>{
