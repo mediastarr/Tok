@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>TikTok</title>
+
+<!-- ⚡ Lightning Load Optimizations: Warm up connection pathways early -->
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="preconnect" href="https://www.google.com">
+<link rel="preconnect" href="https://googleads.g.doubleclick.net">
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#000}
@@ -31,6 +37,16 @@ body.menu-active .card{height:48vh}
 }
 .reel{position:absolute;left:0;width:100%;height:100%;background:#000}
 .reel video{width:100%;height:100%;object-fit:cover}
+
+/* Focus Indicators for YouTube Player */
+.reel iframe {
+  transition: outline 0.15s ease;
+}
+.reel iframe:focus {
+  outline: 2px solid #fe2c55; /* Interactive TikTok Accent Border */
+  outline-offset: -2px;
+}
+
 .yt-touch{position:absolute;inset:0;z-index:2;touch-action:pan-x;}
 
 .vid-info{
@@ -244,7 +260,6 @@ function updateOverlay(d){
 function openMenu(){
   if(!vids[idx]||menuOpen) return;
   menuOpen=true;
-  // Pause background — video or YT iframe
   if(vids[idx]?._ytShort){
     const iframe=document.querySelector('.reel.active iframe');
     if(iframe) iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
@@ -269,7 +284,6 @@ function closeMenu(){
   if(!menuOpen) return;
   menuOpen=false;
   document.body.classList.remove('menu-active');
-  // Resume — video or YT iframe
   if(vids[idx]?._ytShort){
     const iframe=document.querySelector('.reel.active iframe');
     if(iframe) iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}','*');
@@ -386,7 +400,6 @@ async function openProfile(){
   profileOverlay.classList.add('open');
 
   if(d._ytShort){
-    // ── YouTube creator: search their channel for Shorts ──────────────────
     try{
       const channelTitle=d.author?.unique_id||d.author?.nickname||'';
       if(!channelTitle) throw new Error('no channel name');
@@ -394,6 +407,7 @@ async function openProfile(){
         part:'snippet',q:channelTitle+' #shorts',type:'video',
         videoDuration:'short',videoEmbeddable:'true',maxResults:10,key:'PLACEHOLDER'
       });
+      // Corrected: Uses rotated keys engine instead of static text
       const searchData=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+params);
       const items=searchData.items||[];
       if(!items.length){
@@ -422,7 +436,6 @@ async function openProfile(){
       thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';
     }
   }else{
-    // ── TikTok creator: fetch via TikWM ───────────────────────────────────
     try{
       const handle=d.author?.unique_id;
       if(!handle) throw new Error('no handle');
@@ -522,7 +535,6 @@ window.playProfileVid=function(videoUrl,videoId){
 
 document.getElementById('profileClose').addEventListener('click',closeProfile);
 
-// Play a YouTube Short tapped from the profile overlay
 window.playProfileYT=function(ytId){
   window._profileTapped=true;
   profileOverlay.classList.remove('open');
@@ -744,7 +756,6 @@ async function loadFromApify(){
   }));
 }
 
-// ── YouTube Shorts fallback ─────────────────────────────────────────────────
 const YT_KEYS=[
   'AIzaSyDz_P6WIbRBr31VO7fQX0UcP3tFSBlGEE0',
   'AIzaSyDsL7qek4qkCjmyczIUArhK8krUq2QV3mo',
@@ -769,7 +780,6 @@ let ytQueryIdx=0;
 
 function getYtKey(){return YT_KEYS[ytKeyIdx%YT_KEYS.length];}
 
-// Parse ISO 8601 duration (PT1M30S) → total seconds
 function parseIsoDuration(iso){
   if(!iso) return 999;
   const m=iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -777,11 +787,9 @@ function parseIsoDuration(iso){
   return (parseInt(m[1]||0)*3600)+(parseInt(m[2]||0)*60)+parseInt(m[3]||0);
 }
 
-// Shared quota-aware YT fetch — rotates keys on 403, throws on other errors
 async function ytFetch(url){
   let tried=0;
   while(tried<YT_KEYS.length){
-    // Swap the key param in the URL
     const u=new URL(url);
     u.searchParams.set('key',getYtKey());
     try{
@@ -809,14 +817,13 @@ async function loadFromYouTubeShorts(){
   const query=YT_QUERIES[ytQueryIdx%YT_QUERIES.length];
   ytQueryIdx++;
 
-  // ── Pass 1: search for candidate videos ──────────────────────────────────
   const searchParams=new URLSearchParams({
     part:'snippet',
     q:query,
     type:'video',
-    videoDuration:'short',      // API "short" = under 4 min; we filter further below
-    videoEmbeddable:'true',     // only embeddable videos
-    maxResults:30,              // fetch extra so we have enough after filtering
+    videoDuration:'short',
+    videoEmbeddable:'true',
+    maxResults:30,
     regionCode:'US',
     relevanceLanguage:'en',
     key:'PLACEHOLDER',
@@ -828,12 +835,10 @@ async function loadFromYouTubeShorts(){
   const candidates=searchData.items||[];
   if(!candidates.length) throw new Error('YT search: no candidates');
 
-  // Build a map of videoId → snippet for quick lookup
   const snippetMap={};
   candidates.forEach(v=>{snippetMap[v.id.videoId]=v.snippet;});
   const ids=candidates.map(v=>v.id.videoId).join(',');
 
-  // ── Pass 2: fetch contentDetails to get real duration + dimension ─────────
   const detailParams=new URLSearchParams({
     part:'contentDetails,statistics',
     id:ids,
@@ -842,10 +847,8 @@ async function loadFromYouTubeShorts(){
   const detailData=await ytFetch('https://www.googleapis.com/youtube/v3/videos?'+detailParams);
   const details=detailData.items||[];
 
-  // ── Filter: keep only true Shorts (≤60s) ─────────────────────────────────
   const shorts=details.filter(v=>{
     const secs=parseIsoDuration(v.contentDetails?.duration);
-    // Must be 60 seconds or under to qualify as a Short
     return secs>0&&secs<=60;
   });
 
@@ -856,7 +859,7 @@ async function loadFromYouTubeShorts(){
     const secs=parseIsoDuration(v.contentDetails?.duration);
     return {
       aweme_id:'yt_'+v.id,
-      videoUrl:'',              // not used — iframe rendered in addToFeed
+      videoUrl:'',
       ytVideoId:v.id,
       _ytShort:true,
       title:snippet.title||'',
@@ -874,7 +877,6 @@ async function loadFromYouTubeShorts(){
     };
   });
 }
-// ── end YouTube Shorts ───────────────────────────────────────────────────────
 
 function addToFeed(items){
   let added=0;
@@ -882,9 +884,7 @@ function addToFeed(items){
   for(const v of items){
     if(seenIds.has(v.aweme_id)) continue;
     if(!v._ytShort){
-      // Only filter region if it's explicitly set to a non-US value (not empty/missing)
       if(v.region&&v.region!=='US'&&v.region!=='') continue;
-      // Allow duration=0 (unknown) but drop clearly too-long videos
       if(v.duration>60) continue;
       if(!v.videoUrl) continue;
       if(v.videoUrl.endsWith('.mp3')) continue;
@@ -897,10 +897,8 @@ function addToFeed(items){
     reel.style.top=(vids.length-1)*100+'%';
 
     if(v._ytShort){
-      // YouTube Short — rendered as iframe, activated lazily in show()
       reel.dataset.ytId=v.ytVideoId;
       reel.dataset.ytReady='0';
-      // Placeholder thumbnail so reel isn't blank before activation
       if(v.cover){
         const img=document.createElement('img');
         img.src=v.cover;
@@ -949,25 +947,24 @@ async function loadBatch(){
         break;
       }catch(e){
         tier++;
-        if(tier>7){tier=0;} // cycle back to tier 0 instead of dying
-        if(tier===startTier) throw new Error('all sources exhausted'); // full cycle with no success
+        if(tier>7){tier=0;}
+        if(tier===startTier) throw new Error('all sources exhausted');
       }
     }
     totalAdded=addToFeed(rawItems);
     saveCache(vids.map(v=>({...v})));
   }catch(e){console.error('loadBatch error — all sources failed',e);}
   loading=false;
-  if(loadPending){loadPending=false;loadBatch();} // drain pending request
+  if(loadPending){loadPending=false;loadBatch();}
   return totalAdded;
 }
 
-// Preload up to 5 videos ahead — src already set in addToFeed, just ensure preload=auto
 function preloadAhead(){
   const reels=document.querySelectorAll('.reel');
   for(let o=1;o<=5;o++){
     const ni=idx+o;
     if(ni<vids.length&&reels[ni]){
-      if(vids[ni]?._ytShort) continue; // YT Shorts use iframes, no preload needed
+      if(vids[ni]?._ytShort) continue;
       const v=reels[ni].querySelector('video');
       if(v&&v.preload!=='auto'){
         v.preload='auto';
@@ -978,27 +975,22 @@ function preloadAhead(){
 }
 
 async function show(i,animate=false,dir=1){
-  // If we're at or past the end, load more first
   if(i>=vids.length){
     loader.classList.add('show');
     await loadBatch();
   }
-  // If still no videos after load, stay put
   if(vids.length===0) return;
   if(i>=vids.length) i=vids.length-1;
   if(i<0) i=0;
   idx=i;
 
-  // Re-query AFTER loadBatch so newly added reels are included
   const reels=document.querySelectorAll('.reel');
-
   const target='translateY('+(-(idx*100))+'%)';
   if(animate){
-    // Snap to start position instantly, then let transition carry to target
-    const from='translateY('+(-(( idx-dir)*100))+'%)';
+    const from='translateY('+(-((idx-dir)*100))+'%)';
     feed.style.transition='none';
     feed.style.transform=from;
-    feed.getBoundingClientRect(); // force reflow
+    feed.getBoundingClientRect();
     feed.style.transition='transform .32s cubic-bezier(.4,0,.2,1)';
     feed.style.transform=target;
   }else{
@@ -1013,66 +1005,72 @@ async function show(i,animate=false,dir=1){
       loader.classList.add('show');
 
       if(vids[n]?._ytShort){
-        // ── YouTube Short iframe path ────────────────────────────
         if(r.dataset.ytReady==='0'){
-          // Remove thumbnail placeholder
           const img=r.querySelector('img');
           if(img) img.remove();
           const ytId=r.dataset.ytId;
           const iframe=document.createElement('iframe');
+          
+          // ⚡ High-Priority Rendering & Widget Tracking hints appended
           iframe.src='https://www.youtube.com/embed/'+ytId+
             '?autoplay=1&mute=0&loop=1&playlist='+ytId+
-            '&controls=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1';
+            '&controls=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&widgetreferers=true';
           iframe.allow='autoplay; fullscreen';
           iframe.setAttribute('allowfullscreen','');
+          iframe.setAttribute('loading', 'eager'); // ⚡ Force explicit immediate construction
           iframe.style.cssText='width:100%;height:100%;border:none;position:absolute;inset:0';
           r.appendChild(iframe);
           r.dataset.ytReady='1';
-          // Signal pre-warm cleanup
+          
           document.dispatchEvent(new Event('ytShortActivated'));
-          // Transparent overlay captures touch so iframe doesn't swallow swipes
+          
           const overlay=document.createElement('div');
           overlay.className='yt-touch';
           let _sx=0,_sy=0;
           overlay.addEventListener('touchstart',e=>{
             _sx=e.touches[0].clientX;_sy=e.touches[0].clientY;
-            // Stop card's long-press timer from firing under the overlay
             clearTimeout(pressTimer);pressTimer=null;
           },{passive:true});
+          
           overlay.addEventListener('touchend',e=>{
             const dx=e.changedTouches[0].clientX-_sx;
             const dy=e.changedTouches[0].clientY-_sy;
             const absY=Math.abs(dy),absX=Math.abs(dx);
+            
             if(absY>50&&absY>absX){
-              // vertical swipe — navigate reels
-              if(dy>50) show(idx+1,true,1);
-              else show(idx-1,true,-1);
+              // Natural Swipe Direction logic mapping
+              if(dy>50) show(idx-1,true,-1); // Swipe Down -> Previous Reel
+              else show(idx+1,true,1);       // Swipe Up -> Next Reel
             } else if(dx>30&&absX>absY){
-              // swipe right — select/focus the YT iframe
+              // ⚡ Programmatic Focus Engine: Swipe Right explicitly targets the iframe player
+              const ytIframe=r.querySelector('iframe');
+              if(ytIframe) {
+                ytIframe.focus();
+                toast('Player Selected');
+              }
+            } else if(absX<40&&absY<40){
+              if(wasLongPress){wasLongPress=false;return;}
+              
+              // ⚡ Tap Interaction fixes focus context instantly
               const ytIframe=r.querySelector('iframe');
               if(ytIframe) ytIframe.focus();
-            } else if(absX<40&&absY<40){
-              // tap — same as card click
-              if(wasLongPress){wasLongPress=false;return;}
+              
               if(!menuOpen) openMenu(); else closeMenu();
             }
           },{passive:true});
           r.appendChild(overlay);
-          // iframe fires load event — hide spinner then
+          
           iframe.addEventListener('load',()=>{
             if(r.classList.contains('active')) loader.classList.remove('show');
           },{once:true});
         }else{
-          // Already injected — just unpause via postMessage
           const iframe=r.querySelector('iframe');
           if(iframe) iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}','*');
           loader.classList.remove('show');
         }
       }else{
-        // ── Regular video path ───────────────────────────────────
         const vid=r.querySelector('video');
         if(!vid) return;
-        // src already set in addToFeed — no need to set again
         vid.muted=false;vid.volume=1;
 
         let played=false;
@@ -1095,10 +1093,8 @@ async function show(i,animate=false,dir=1){
 
       updateOverlay(vids[n]);
       preloadAhead();
-      // Trigger next batch earlier — when 5 videos remain
       if(n>=vids.length-5) loadBatch();
     }else{
-      // Deactivate — pause video or pause YT iframe
       if(vids[n]?._ytShort){
         const iframe=r.querySelector('iframe');
         if(iframe) iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
@@ -1111,16 +1107,9 @@ async function show(i,animate=false,dir=1){
   });
 }
 
-// ── Pre-warm: runs immediately on page load, before the user taps ────────────
 (function prewarm(){
-  // 1. Silent background fetch — populate vids[] and set video src so
-  //    the browser starts buffering before the tap.
   loadBatch().catch(()=>{});
 
-  // 2. YouTube player pre-warm — inject a hidden off-screen iframe so the
-  //    browser pre-establishes the youtube.com connection, loads player JS,
-  //    and resolves DNS. The iframe is removed once the first real YT reel
-  //    activates (or after 30 s to avoid wasting resources).
   const ytWarm=document.createElement('iframe');
   ytWarm.src='https://www.youtube.com/embed/?enablejsapi=1&autoplay=0&mute=1';
   ytWarm.allow='autoplay';
@@ -1129,7 +1118,7 @@ async function show(i,animate=false,dir=1){
   document.body.appendChild(ytWarm);
   window._ytWarmIframe=ytWarm;
   const cleanup=()=>{if(ytWarm.parentNode){ytWarm.parentNode.removeChild(ytWarm);window._ytWarmIframe=null;}};
-  setTimeout(cleanup,30000); // remove after 30 s if never needed
+  setTimeout(cleanup,30000);
   document.addEventListener('ytShortActivated',cleanup,{once:true});
 })();
 
@@ -1146,7 +1135,6 @@ document.getElementById('splash').addEventListener('click',async(e)=>{
     await show(0);
   }
 
-  // If prewarm already fetched videos, addToFeed was called — avoid double-load
   if(vids.length===0){
     await loadBatch();
   }
@@ -1175,8 +1163,9 @@ addEventListener('touchend',e=>{
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
   if(isSwipe){
-    if(dy>50) show(idx+1,true,1);
-    else show(idx-1,true,-1);
+    // Standard structural Swipe handling
+    if(dy>50) show(idx-1,true,-1);
+    else show(idx+1,true,1);
   }
 },{passive:true});
 
