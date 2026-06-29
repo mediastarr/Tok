@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>TikTok</title>
 
-<!-- ⚡ Lightning Load Optimizations: Warm up connection pathways early -->
 <link rel="preconnect" href="https://www.youtube.com">
 <link rel="preconnect" href="https://www.google.com">
 <link rel="preconnect" href="https://googleads.g.doubleclick.net">
@@ -38,13 +37,18 @@ body.menu-active .card{height:48vh}
 .reel{position:absolute;left:0;width:100%;height:100%;background:#000}
 .reel video{width:100%;height:100%;object-fit:cover}
 
-/* Focus Indicators for YouTube Player */
 .reel iframe {
   transition: outline 0.15s ease;
 }
 .reel iframe:focus {
-  outline: 2px solid #fe2c55; /* Interactive TikTok Accent Border */
+  outline: 2px solid #fe2c55;
   outline-offset: -2px;
+}
+
+/* YT player selected state — white border like the screenshot */
+.card.yt-selected{
+  outline: 3px solid #fff;
+  outline-offset: 0px;
 }
 
 .yt-touch{position:absolute;inset:0;z-index:2;touch-action:pan-x;}
@@ -155,9 +159,9 @@ body.menu-active .menu-actions{display:flex}
 .more-backdrop.open{display:block}
 </style>
 </head>
-<body>
+<body tabindex="-1">
 
-<div class="splash" id="splash">
+<div class="splash" id="splash" tabindex="0" autofocus>
   <div class="splash-icon">▶</div>
   <div class="splash-text">Tap to Start</div>
 </div>
@@ -248,6 +252,17 @@ function fmt(n){
 
 let toastT=null;
 function toast(msg){clearTimeout(toastT);toastEl.textContent=msg;toastEl.classList.add('show');toastT=setTimeout(()=>toastEl.classList.remove('show'),1600);}
+
+// Select/deselect YT player — adds white border like in the screenshot
+function selectYTPlayer(r){
+  card.classList.add('yt-selected');
+  const iframe=r.querySelector('iframe');
+  if(iframe) iframe.focus();
+}
+function deselectYTPlayer(){
+  card.classList.remove('yt-selected');
+  document.body.focus();
+}
 
 function updateOverlay(d){
   document.getElementById('vidUser').textContent='@'+(d.author?.unique_id||'user');
@@ -407,7 +422,6 @@ async function openProfile(){
         part:'snippet',q:channelTitle+' #shorts',type:'video',
         videoDuration:'short',videoEmbeddable:'true',maxResults:10,key:'PLACEHOLDER'
       });
-      // Corrected: Uses rotated keys engine instead of static text
       const searchData=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+params);
       const items=searchData.items||[];
       if(!items.length){
@@ -528,7 +542,6 @@ window.playProfileVid=function(videoUrl,videoId){
     }
 
     feed.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
-
     show(insertAt,true,1);
   },80);
 };
@@ -798,7 +811,6 @@ async function ytFetch(url){
       if(data.error){
         const reason=data.error?.errors?.[0]?.reason||'';
         if(data.error.code===403&&(reason==='quotaExceeded'||reason==='dailyLimitExceeded'||reason==='forbidden')){
-          console.warn('YT key quota hit, rotating…',YT_KEYS[ytKeyIdx%YT_KEYS.length]);
           ytKeyIdx++;tried++;continue;
         }
         throw new Error('YT API: '+data.error.message);
@@ -975,6 +987,9 @@ function preloadAhead(){
 }
 
 async function show(i,animate=false,dir=1){
+  // Always deselect YT player when navigating
+  deselectYTPlayer();
+
   if(i>=vids.length){
     loader.classList.add('show');
     await loadBatch();
@@ -1010,20 +1025,17 @@ async function show(i,animate=false,dir=1){
           if(img) img.remove();
           const ytId=r.dataset.ytId;
           const iframe=document.createElement('iframe');
-          
-          // ⚡ High-Priority Rendering & Widget Tracking hints appended
           iframe.src='https://www.youtube.com/embed/'+ytId+
             '?autoplay=1&mute=0&loop=1&playlist='+ytId+
-            '&controls=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&widgetreferers=true';
+            '&controls=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1';
           iframe.allow='autoplay; fullscreen';
           iframe.setAttribute('allowfullscreen','');
-          iframe.setAttribute('loading', 'eager'); // ⚡ Force explicit immediate construction
+          iframe.setAttribute('loading','eager');
           iframe.style.cssText='width:100%;height:100%;border:none;position:absolute;inset:0';
           r.appendChild(iframe);
           r.dataset.ytReady='1';
-          
           document.dispatchEvent(new Event('ytShortActivated'));
-          
+
           const overlay=document.createElement('div');
           overlay.className='yt-touch';
           let _sx=0,_sy=0;
@@ -1031,35 +1043,25 @@ async function show(i,animate=false,dir=1){
             _sx=e.touches[0].clientX;_sy=e.touches[0].clientY;
             clearTimeout(pressTimer);pressTimer=null;
           },{passive:true});
-          
           overlay.addEventListener('touchend',e=>{
             const dx=e.changedTouches[0].clientX-_sx;
             const dy=e.changedTouches[0].clientY-_sy;
             const absY=Math.abs(dy),absX=Math.abs(dx);
-            
             if(absY>50&&absY>absX){
-              // Natural Swipe Direction logic mapping
-              if(dy>50) show(idx-1,true,-1); // Swipe Down -> Previous Reel
-              else show(idx+1,true,1);       // Swipe Up -> Next Reel
-            } else if(dx>30&&absX>absY){
-              // ⚡ Programmatic Focus Engine: Swipe Right explicitly targets the iframe player
-              const ytIframe=r.querySelector('iframe');
-              if(ytIframe) {
-                ytIframe.focus();
-                toast('Player Selected');
-              }
+              // vertical swipe — navigate reels
+              if(dy>50) show(idx+1,true,1);
+              else show(idx-1,true,-1);
+            } else if(absX>30&&absX>absY){
+              // swipe left OR right — select YT player with white border
+              selectYTPlayer(r);
             } else if(absX<40&&absY<40){
+              // tap — open/close menu
               if(wasLongPress){wasLongPress=false;return;}
-              
-              // ⚡ Tap Interaction fixes focus context instantly
-              const ytIframe=r.querySelector('iframe');
-              if(ytIframe) ytIframe.focus();
-              
               if(!menuOpen) openMenu(); else closeMenu();
             }
           },{passive:true});
           r.appendChild(overlay);
-          
+
           iframe.addEventListener('load',()=>{
             if(r.classList.contains('active')) loader.classList.remove('show');
           },{once:true});
@@ -1094,6 +1096,7 @@ async function show(i,animate=false,dir=1){
       updateOverlay(vids[n]);
       preloadAhead();
       if(n>=vids.length-5) loadBatch();
+      if(userTouched) document.body.focus();
     }else{
       if(vids[n]?._ytShort){
         const iframe=r.querySelector('iframe');
@@ -1109,7 +1112,6 @@ async function show(i,animate=false,dir=1){
 
 (function prewarm(){
   loadBatch().catch(()=>{});
-
   const ytWarm=document.createElement('iframe');
   ytWarm.src='https://www.youtube.com/embed/?enablejsapi=1&autoplay=0&mute=1';
   ytWarm.allow='autoplay';
@@ -1122,27 +1124,25 @@ async function show(i,animate=false,dir=1){
   document.addEventListener('ytShortActivated',cleanup,{once:true});
 })();
 
-document.getElementById('splash').addEventListener('click',async(e)=>{
-  e.stopPropagation();
+async function dismissSplash(){
+  if(userTouched) return;
   userTouched=true;
   document.getElementById('splash').style.display='none';
   document.body.classList.add('ready');
+  document.body.focus();
   loader.classList.add('show');
-
   const cached=loadCache();
-  if(cached.length>0){
-    addToFeed(cached);
-    await show(0);
-  }
-
-  if(vids.length===0){
-    await loadBatch();
-  }
-
+  if(cached.length>0){addToFeed(cached);await show(0);}
+  if(vids.length===0){await loadBatch();}
   if(cached.length===0) await show(0);
-
   const v=document.querySelector('.reel.active video');
   if(v){v.muted=false;v.volume=1;}
+  document.body.focus();
+}
+
+document.getElementById('splash').addEventListener('click',async(e)=>{
+  e.stopPropagation();
+  await dismissSplash();
 },{once:true});
 
 let sx=0,sy=0;
@@ -1163,17 +1163,20 @@ addEventListener('touchend',e=>{
   const isSwipe=Math.abs(dy)>50&&Math.abs(dy)>Math.abs(dx);
   if(menuOpen){if(isSwipe&&dy<-50)closeMenu();return;}
   if(isSwipe){
-    // Standard structural Swipe handling
-    if(dy>50) show(idx-1,true,-1);
-    else show(idx+1,true,1);
+    if(dy>50) show(idx+1,true,1);
+    else show(idx-1,true,-1);
   }
 },{passive:true});
 
-addEventListener('keydown',e=>{
-  if(!userTouched)userTouched=true;
+addEventListener('keydown',async e=>{
+  if(!userTouched){await dismissSplash();return;}
   if(menuOpen){if(e.key==='Escape'||e.key==='ArrowUp'||e.key==='Enter'){closeMenu();return;}return;}
   if(e.key==='ArrowDown') show(idx+1,true,1);
   if(e.key==='ArrowUp') show(idx-1,true,-1);
+  if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&vids[idx]?._ytShort){
+    const r=document.querySelector('.reel.active');
+    if(r) selectYTPlayer(r);
+  }
 });
 </script>
 </body>
