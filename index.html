@@ -47,7 +47,7 @@ body.menu-active .card{height:48vh}
 
 /* YT player selected state — white border like the screenshot */
 .card.yt-selected{
-  outline: 3px solid #fff;
+  outline: 3px solid #ffe135;
   outline-offset: 0px;
 }
 
@@ -1048,15 +1048,16 @@ async function show(i,animate=false,dir=1){
             const dy=e.changedTouches[0].clientY-_sy;
             const absY=Math.abs(dy),absX=Math.abs(dx);
             if(absY>50&&absY>absX){
-              // vertical swipe — navigate reels
+              // vertical swipe — navigate reels (down=next, up=prev)
               if(dy>50) show(idx+1,true,1);
               else show(idx-1,true,-1);
             } else if(absX>30&&absX>absY){
-              // swipe left OR right — select YT player with white border
+              // swipe left OR right — select YT player with yellow border
               selectYTPlayer(r);
             } else if(absX<40&&absY<40){
-              // tap — open/close menu
+              // tap — if selected deselect; always open/close menu
               if(wasLongPress){wasLongPress=false;return;}
+              deselectYTPlayer();
               if(!menuOpen) openMenu(); else closeMenu();
             }
           },{passive:true});
