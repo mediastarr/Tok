@@ -41,8 +41,7 @@ body.menu-active .card{height:48vh}
 /* YT selected state — yellow border */
 .card.yt-selected{outline:3px solid #ffe135;outline-offset:0px;}
 
-.reel iframe{transition:outline 0.15s ease;}
-.reel iframe:focus{outline:2px solid #fe2c55;outline-offset:-2px;}
+.reel iframe{outline:none;}
 
 .yt-touch{position:absolute;inset:0;z-index:2;touch-action:pan-x;}
 
@@ -1037,19 +1036,20 @@ async function show(i,animate=false,dir=1){
             const dy=e.changedTouches[0].clientY-_sy;
             const absY=Math.abs(dy),absX=Math.abs(dx);
             if(absY>50&&absY>absX){
-              // FIX: swipe down = next, swipe up = prev
+              // swipe down = next, swipe up = prev
               if(dy>50) show(idx+1,true,1);
               else show(idx-1,true,-1);
             } else if(absX>30&&absX>absY){
               // swipe left or right = select YT player (yellow border)
               selectYTPlayer(r);
-            } else if(absX<40&&absY<40){
-              // tap = open menu; stop propagation so card click doesn't close it immediately
+            } else {
+              // tap = open menu; stop ALL bubbling so card/window don't interfere
+              e.stopPropagation();
               if(wasLongPress){wasLongPress=false;return;}
               if(!menuOpen) openMenu(); else closeMenu();
             }
-          },{passive:true});
-          overlay.addEventListener('click',e=>{e.stopPropagation();},{passive:false});
+          },{passive:false});
+          overlay.addEventListener('click',e=>{e.stopPropagation();});
           r.appendChild(overlay);
 
           iframe.addEventListener('load',()=>{
