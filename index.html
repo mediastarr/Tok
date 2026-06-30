@@ -1044,11 +1044,12 @@ async function show(i,animate=false,dir=1){
               // swipe left or right = select YT player (yellow border)
               selectYTPlayer(r);
             } else if(absX<40&&absY<40){
-              // FIX: tap = open menu (no iframe focus)
+              // tap = open menu; stop propagation so card click doesn't close it immediately
               if(wasLongPress){wasLongPress=false;return;}
               if(!menuOpen) openMenu(); else closeMenu();
             }
           },{passive:true});
+          overlay.addEventListener('click',e=>{e.stopPropagation();},{passive:false});
           r.appendChild(overlay);
 
           iframe.addEventListener('load',()=>{
