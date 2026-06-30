@@ -470,10 +470,12 @@ async function show(i,animate=false,dir=1){
             const absY=Math.abs(dy),absX=Math.abs(dx);
             if(absY>50&&absY>absX){
               // vertical swipe: down=next, up=prev
+              e.stopPropagation();
               if(dy>50)show(idx+1,true,1);
               else show(idx-1,true,-1);
             }else if(absX>30&&absX>absY){
               // horizontal swipe: select player with yellow border
+              e.stopPropagation();
               selectYTPlayer();
             }else{
               // tap: open/close menu — stop bubbling so card click doesn't interfere
