@@ -426,8 +426,8 @@ function preloadAhead(){
 }
 
 async function show(i,animate=false,dir=1){
-  deselectYTPlayer();
   if(i>=vids.length){loader.classList.add('show');await loadBatch();}
+  deselectYTPlayer();
   if(vids.length===0)return;
   if(i>=vids.length)i=vids.length-1;
   if(i<0)i=0;
