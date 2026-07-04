@@ -398,14 +398,19 @@ async function show(i,animate=false,dir=1){
   setTimeout(()=>{if(ytWarm.parentNode)ytWarm.parentNode.removeChild(ytWarm);},30000);
 })();
 
-document.getElementById('splash').addEventListener('click',async(e)=>{
-  e.stopPropagation();
+async function dismissSplash(){
+  if(userTouched)return;
   userTouched=true;
   document.getElementById('splash').style.display='none';
   document.body.classList.add('ready');
   loader.classList.add('show');
   await loadBatch();
   await show(0);
+}
+
+document.getElementById('splash').addEventListener('click',async(e)=>{
+  e.stopPropagation();
+  await dismissSplash();
 },{once:true});
 
 let sx=0,sy=0;
@@ -418,8 +423,8 @@ addEventListener('touchend',e=>{
   if(isSwipe){closeMenu();if(dy>50)show(idx+1,true,1);else show(idx-1,true,-1);}
 },{passive:true});
 
-addEventListener('keydown',e=>{
-  if(!userTouched)userTouched=true;
+addEventListener('keydown',async e=>{
+  if(!userTouched){await dismissSplash();return;}
   if(menuOpen){
     if(e.key==='Escape'){closeMenu();return;}
     if(e.key==='Enter'){
