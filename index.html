@@ -62,6 +62,21 @@ body.menu-active .menu-actions{display:flex}
 .more-sheet-cancel{margin:8px 20px 0;padding:12px;border-radius:12px;background:rgba(255,255,255,.08);text-align:center;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .more-backdrop{position:fixed;inset:0;z-index:399;background:rgba(0,0,0,.5);display:none}
 .more-backdrop.open{display:block}
+.profile-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;touch-action:none;}
+.profile-overlay.open{display:flex}
+.profile-av{width:64px;height:64px;border-radius:50%;background:#333;border:2px solid #555;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.profile-av img{width:100%;height:100%;object-fit:cover}
+.profile-av-placeholder{color:#fff}
+.profile-name{font-size:16px;font-weight:700}
+.profile-handle{font-size:13px;color:#aaa;margin-top:2px}
+.profile-stats{display:flex;gap:20px;margin-top:8px}
+.profile-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+.profile-stat-val{font-size:15px;font-weight:700}
+.profile-stat-lbl{font-size:10px;color:#888}
+.profile-close{padding:7px 24px;border-radius:20px;background:rgba(255,255,255,.12);font-size:12px;cursor:pointer;flex-shrink:0;}
+.profile-videos{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;margin-top:4px;}
+.profile-vid-thumb{aspect-ratio:9/16;background:#222;border-radius:3px;overflow:hidden;cursor:pointer;}
+.profile-vid-thumb img{width:100%;height:100%;object-fit:cover}
 </style>
 </head>
 <body>
@@ -96,10 +111,22 @@ body.menu-active .menu-actions{display:flex}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="profile-overlay" id="profileOverlay">
+  <div class="profile-av" id="profileAv"><div class="profile-av-placeholder">▶</div></div>
+  <div class="profile-name" id="profileName"></div>
+  <div class="profile-handle" id="profileHandle"></div>
+  <div class="profile-stats" id="profileStats"></div>
+  <div class="profile-close" id="profileClose" tabindex="0">Close</div>
+  <div class="profile-videos" id="profileVideos"></div>
+</div>
 <div class="more-backdrop" id="moreBackdrop"></div>
 <div class="more-sheet" id="moreSheet">
   <div class="more-sheet-handle"></div>
   <div class="more-sheet-title">Options</div>
+  <div class="more-row" id="moreProfile">
+    <div class="more-row-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+    <div class="more-row-label">View Creator Profile</div>
+  </div>
   <div class="more-row" id="moreNext">
     <div class="more-row-icon"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z"/></svg></div>
     <div class="more-row-label">Skip to Next Video</div>
@@ -174,11 +201,69 @@ btnSave.addEventListener('click',(e)=>{e.stopPropagation();if(!vids[idx])return;
 btnMore.addEventListener('click',(e)=>{e.stopPropagation();openMore();});
 document.getElementById('moreCancel').addEventListener('click',closeMore);
 document.getElementById('moreBackdrop').addEventListener('click',closeMore);
+document.getElementById('moreProfile').addEventListener('click',()=>{closeMore();closeMenu();openProfile();});
 document.getElementById('moreNext').addEventListener('click',()=>{closeMore();closeMenu();show(idx+1,true,1);});
 document.getElementById('moreCopyLink').addEventListener('click',()=>{closeMore();if(!vids[idx])return;const url='https://www.youtube.com/shorts/'+(vids[idx].ytVideoId||'');navigator.clipboard.writeText(url).then(()=>toast('Link copied!')).catch(()=>toast('Copy failed'));});
 document.getElementById('moreNotInterested').addEventListener('click',()=>{closeMore();closeMenu();if(vids[idx]){seenIds.add(vids[idx].aweme_id+'_skip');show(idx+1,true,1);toast('Got it — showing less like this');}});
 
-const YT_KEYS=[
+const profileOverlay=document.getElementById('profileOverlay');
+document.getElementById('profileClose').addEventListener('click',()=>closeProfile());
+
+async function openProfile(){
+  if(!vids[idx])return;
+  const d=vids[idx];
+  const channelTitle=d.author?.unique_id||'';
+  document.getElementById('profileName').textContent=d.author?.nickname||channelTitle||'YouTuber';
+  document.getElementById('profileHandle').textContent='@'+channelTitle;
+  document.getElementById('profileStats').innerHTML=
+    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.digg_count)+'</div><div class="profile-stat-lbl">Likes</div></div>'+
+    '<div class="profile-stat"><div class="profile-stat-val">'+fmt(d.comment_count||0)+'</div><div class="profile-stat-lbl">Comments</div></div>';
+  const avEl=document.getElementById('profileAv');
+  avEl.innerHTML=d.author?.avatar?'<img src="'+d.author.avatar+'">':'<div class="profile-av-placeholder">▶</div>';
+  const thumbsEl=document.getElementById('profileVideos');
+  thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Loading...</div>';
+  profileOverlay.classList.add('open');
+  try{
+    // Search YouTube for this channel's Shorts
+    const params=new URLSearchParams({part:'snippet',q:channelTitle+' #shorts',type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:10,key:'PLACEHOLDER'});
+    const data=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+params);
+    const items=data.items||[];
+    if(!items.length){thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">No videos found</div>';return;}
+    thumbsEl.innerHTML='';
+    items.forEach(v=>{
+      const ytId=v.id.videoId;
+      const thumb=document.createElement('div');
+      thumb.className='profile-vid-thumb';
+      const cover=v.snippet.thumbnails?.high?.url||v.snippet.thumbnails?.default?.url||'';
+      if(cover)thumb.innerHTML='<img src="'+cover+'" loading="lazy">';
+      thumb.addEventListener('click',()=>{
+        closeProfile();
+        // Insert and play this video
+        const awemeId='yt_'+ytId;
+        if(!seenIds.has(awemeId)){
+          seenIds.add(awemeId);
+          const snippet=v.snippet;
+          vids.splice(idx+1,0,{aweme_id:awemeId,ytVideoId:ytId,title:snippet.title||'',author:d.author,digg_count:0,share_count:0,comment_count:0,cover:cover});
+          const reel=document.createElement('div');
+          reel.className='reel';reel.dataset.ytId=ytId;reel.dataset.ytReady='0';
+          const img=document.createElement('img');img.src=cover;img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+          reel.appendChild(img);
+          const allReels=feed.querySelectorAll('.reel');
+          if(idx+1<allReels.length)feed.insertBefore(reel,allReels[idx+1]);else feed.appendChild(reel);
+          feed.querySelectorAll('.reel').forEach((r,n)=>{r.style.top=n*100+'%';});
+        }
+        show(idx+1,true,1);
+      });
+      thumbsEl.appendChild(thumb);
+    });
+  }catch(e){thumbsEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#666;font-size:12px">Could not load videos</div>';}
+}
+
+function closeProfile(){
+  profileOverlay.classList.remove('open');
+}
+
+
   'AIzaSyDz_P6WIbRBr31VO7fQX0UcP3tFSBlGEE0','AIzaSyDsL7qek4qkCjmyczIUArhK8krUq2QV3mo',
   'AIzaSyBKgt_-gM4Nnfkxj-6xz81tNHMydBLD0CQ','AIzaSyAxz8JgYT02TS12fcdIYVNqmhT_0OwA48Q',
   'AIzaSyDM_mZiXih02mMOCKEUgfrJhHU0RCO_W4Y','AIzaSyAAqJcN9TJiNpPSvvIX8IP2pDCbwrwbH68',
