@@ -351,9 +351,10 @@ var YT_KEYS=[
   'AIzaSyDTIw26DvcDWRCGftd-c-_SdcllN0zvxE0','AIzaSyALn7in8kXrFCzC1VU51UqNFZ9YuLkwXNY',
   'AIzaSyB_3g7oRfcoKqQYqt7UPHwQNTt3BjLD4iw'
 ];
-var ytKeyIdx=0,ytPageToken='';
+var ytKeyIdx=0;
 var YT_QUERIES=['#shorts','funny shorts','comedy shorts','viral shorts','trending shorts'];
 var ytQueryIdx=0;
+var ytPageTokens={}; // per-query pagination cursor, keyed by query index
 
 function parseIsoDuration(iso){if(!iso)return 999;var m=iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);if(!m)return 999;return(parseInt(m[1]||0)*3600)+(parseInt(m[2]||0)*60)+parseInt(m[3]||0);}
 
@@ -374,10 +375,13 @@ async function loadBatch(){
   if(loading){loadPending=true;return;}
   loading=true;
   try{
-    var q=YT_QUERIES[ytQueryIdx%YT_QUERIES.length];ytQueryIdx++;
-    var sp=new URLSearchParams({part:'snippet',q:q,type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:30,regionCode:'US',relevanceLanguage:'en',key:'PLACEHOLDER',...(ytPageToken?{pageToken:ytPageToken}:{})});
+    var qIdx=ytQueryIdx%YT_QUERIES.length;
+    var q=YT_QUERIES[qIdx];
+    var tok=ytPageTokens[qIdx]||'';
+    var sp=new URLSearchParams({part:'snippet',q:q,type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:30,regionCode:'US',relevanceLanguage:'en',key:'PLACEHOLDER',...(tok?{pageToken:tok}:{})});
     var sd=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+sp);
-    ytPageToken=sd.nextPageToken||'';
+    ytPageTokens[qIdx]=sd.nextPageToken||'';
+    if(!sd.nextPageToken)ytQueryIdx++; // only rotate queries once this one's pages are exhausted
     var candidates=sd.items||[];
     var snipMap={};candidates.forEach(function(v){snipMap[v.id.videoId]=v.snippet;});
     var ids=candidates.map(function(v){return v.id.videoId;}).join(',');
