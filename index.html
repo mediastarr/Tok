@@ -249,6 +249,8 @@ function closeMenu(){
   menuOpen=false;
   menuFreshlyOpened=false;
   document.body.classList.remove('menu-active');
+  var ae=document.activeElement;
+  if(ae&&(ae.id==='btnLike'||ae.id==='btnShare'||ae.id==='btnSave'||ae.id==='btnMore'))ae.blur(); // release focus so reel swipes resume working
   var iframe=document.querySelector('.reel.active iframe');
   if(iframe)iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');
 }
@@ -489,6 +491,11 @@ document.addEventListener('keydown',function(e){
     if(e.key==='Enter'&&menuOpen&&menuFreshlyOpened&&ae&&ae.id==='btnLike'){
       // Still on the button the menu auto-focused, and the user hasn't
       // navigated anywhere yet — treat this tap as "close menu", not "like".
+      closeMenu();e.stopPropagation();e.preventDefault();return;
+    }
+    if(e.key==='ArrowUp'&&menuOpen&&inMenu){
+      // Swiping up while any menu button (Like/Share/Save/More) is focused
+      // closes the menu, regardless of which one was navigated to.
       closeMenu();e.stopPropagation();e.preventDefault();return;
     }
     if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight')menuFreshlyOpened=false;
