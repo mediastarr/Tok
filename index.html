@@ -42,7 +42,6 @@ body.menu-active .vid-info{display:none}
 .vid-stats{font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;display:flex;gap:12px}
 
 .play-icon{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);pointer-events:none;z-index:4;}
-body.menu-active .play-icon{display:flex}
 .play-circle{width:52px;height:52px;border-radius:50%;background:rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-size:20px;padding-left:3px}
 
 /* Menu */
@@ -100,6 +99,9 @@ body.menu-active .menu-wrap{display:flex}
 .search-bar{width:100%;max-width:480px;min-height:44px;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;font-size:16px;color:#fff;display:flex;align-items:center;}
 .search-cursor{margin-left:2px;animation:blink 1s step-end infinite}
 @keyframes blink{50%{opacity:0}}
+.kb-topbar{width:100%;max-width:480px;display:flex;}
+.kb-back{padding:8px 16px;border-radius:8px;background:rgba(255,255,255,.08);border:2px solid transparent;font-size:13px;font-weight:600;cursor:pointer;min-height:36px;display:flex;align-items:center;}
+.kb-back.kb-focus{border-color:#00d4ff;box-shadow:0 0 14px rgba(0,212,255,.5);background:rgba(0,212,255,.15);}
 .kb-row{display:flex;gap:6px;width:100%;max-width:480px;justify-content:center;}
 .kb-key{flex:1;aspect-ratio:1;max-width:60px;background:rgba(255,255,255,.08);border:2px solid transparent;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;cursor:pointer;min-height:40px;}
 .kb-key.kb-focus{border-color:#00d4ff;box-shadow:0 0 14px rgba(0,212,255,.5);background:rgba(0,212,255,.15);}
@@ -183,6 +185,7 @@ body.menu-active .menu-wrap{display:flex}
 
 <!-- SEARCH (on-screen keyboard — no physical keyboard on this platform) -->
 <div class="search-overlay" id="searchOverlay">
+  <div class="kb-topbar"><div class="kb-back" id="kbBack">‹ Back</div></div>
   <div class="search-bar"><span id="searchQueryText"></span><span class="search-cursor">|</span></div>
   <div id="kbGrid"></div>
 </div>
@@ -251,8 +254,8 @@ function openMenu(){
   if(!vids[idx]||menuOpen)return;
   loader.classList.remove('show');
   menuOpen=true;
-  var iframe=document.querySelector('.reel.active iframe');
-  if(iframe)iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
+  // Video keeps playing in the corner mini-player instead of pausing —
+  // it's now visible, so pausing would defeat the point of shrinking it.
   var d=vids[idx];
   document.getElementById('menuName').textContent='@'+(d.author.unique_id||'');
   document.getElementById('menuCap').textContent=d.title||'';
@@ -334,7 +337,9 @@ async function openProfile(){
   document.getElementById('profileOverlay').classList.add('open');
   document.getElementById('profClose').focus();
   try{
-    var params=new URLSearchParams({part:'snippet',q:(d.author.unique_id||'')+'#shorts',type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:10,key:'PLACEHOLDER'});
+    var params=d.author.channelId
+      ?new URLSearchParams({part:'snippet',channelId:d.author.channelId,type:'video',videoDuration:'short',order:'date',videoEmbeddable:'true',maxResults:24,key:'PLACEHOLDER'})
+      :new URLSearchParams({part:'snippet',q:(d.author.unique_id||'')+'#shorts',type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:24,key:'PLACEHOLDER'});
     var data=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+params);
     var items=data.items||[];
     if(!items.length){grid.innerHTML='<div class="prof-msg">No videos found</div>';return;}
@@ -403,7 +408,7 @@ var KB_ROWS=[
   ['I','O','P','A','S','D','F'],
   ['G','H','J','K','L','Z','X'],
   ['C','V','B','N','M','SP','⌫'],
-  ['GO','CANCEL']
+  ['GO']
 ];
 var kbQuery='',kbRow=0,kbCol=0;
 (function renderKeyboard(){
@@ -412,7 +417,7 @@ var kbQuery='',kbRow=0,kbCol=0;
     var rowEl=document.createElement('div');rowEl.className='kb-row';
     row.forEach(function(label,c){
       var key=document.createElement('div');
-      key.className='kb-key'+(label==='SP'||label==='GO'||label==='CANCEL'?' kb-wide':'');
+      key.className='kb-key'+(label==='SP'||label==='GO'?' kb-wide':'');
       key.id='kb-'+r+'-'+c;
       key.textContent=label==='SP'?'Space':label;
       key.addEventListener('click',function(){kbRow=r;kbCol=c;activateKey(label);});
@@ -421,6 +426,7 @@ var kbQuery='',kbRow=0,kbCol=0;
     grid.appendChild(rowEl);
   });
 })();
+document.getElementById('kbBack').addEventListener('click',closeSearch);
 function openSearch(){
   kbQuery='';kbRow=0;kbCol=0;
   document.getElementById('searchQueryText').textContent='';
@@ -430,15 +436,27 @@ function openSearch(){
 function closeSearch(){document.getElementById('searchOverlay').classList.remove('open');}
 function highlightKey(){
   document.querySelectorAll('.kb-key').forEach(function(k){k.classList.remove('kb-focus');});
+  document.getElementById('kbBack').classList.remove('kb-focus');
+  if(kbRow===-1){document.getElementById('kbBack').classList.add('kb-focus');return;}
   var el=document.getElementById('kb-'+kbRow+'-'+kbCol);
   if(el)el.classList.add('kb-focus');
 }
 function handleSearchKey(e){
   var key=e.key;
+  if(kbRow===-1){
+    // Back button is focused
+    if(key==='ArrowDown'){kbRow=0;highlightKey();}
+    else if(key==='Enter'||key==='Escape'){closeSearch();}
+    else return;
+    e.preventDefault();e.stopPropagation();return;
+  }
   if(key==='ArrowRight'){kbCol=Math.min(kbCol+1,KB_ROWS[kbRow].length-1);highlightKey();}
   else if(key==='ArrowLeft'){kbCol=Math.max(kbCol-1,0);highlightKey();}
   else if(key==='ArrowDown'){kbRow=Math.min(kbRow+1,KB_ROWS.length-1);kbCol=Math.min(kbCol,KB_ROWS[kbRow].length-1);highlightKey();}
-  else if(key==='ArrowUp'){kbRow=Math.max(kbRow-1,0);kbCol=Math.min(kbCol,KB_ROWS[kbRow].length-1);highlightKey();}
+  else if(key==='ArrowUp'){
+    if(kbRow===0){kbRow=-1;highlightKey();} // swiping up past the top row reaches Back
+    else{kbRow--;kbCol=Math.min(kbCol,KB_ROWS[kbRow].length-1);highlightKey();}
+  }
   else if(key==='Enter'){activateKey(KB_ROWS[kbRow][kbCol]);}
   else if(key==='Escape'){closeSearch();}
   else return;
@@ -447,7 +465,6 @@ function handleSearchKey(e){
 function activateKey(label){
   if(label==='SP')kbQuery+=' ';
   else if(label==='⌫')kbQuery=kbQuery.slice(0,-1);
-  else if(label==='CANCEL'){closeSearch();return;}
   else if(label==='GO'){var q=kbQuery.trim();closeSearch();if(q)submitSearch(q);return;}
   else kbQuery+=label;
   document.getElementById('searchQueryText').textContent=kbQuery;
@@ -490,6 +507,20 @@ function activeQueries(){
 var ytQueryIdx=0;
 var ytPageTokens={}; // per-query pagination cursor, keyed by query index
 
+// Freshness: how recent, and how to sort, per category. Home/Local sort
+// newest-first within a tight window; Trending favors popularity within a
+// wider window; Search stays relevance-ranked so niche queries still return
+// results, with only a loose recency cap.
+function freshnessConfig(mode){
+  if(mode==='trending')return{order:'viewCount',days:30};
+  if(mode==='search')return{order:'relevance',days:365};
+  return{order:'date',days:14};
+}
+// Channel-quality filter: favor real, established creators over disposable
+// spam/bot channels that get created solely to farm reposted content.
+var MIN_SUBSCRIBERS=500;
+var MIN_CHANNEL_AGE_DAYS=14;
+
 function parseIsoDuration(iso){if(!iso)return 999;var m=iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);if(!m)return 999;return(parseInt(m[1]||0)*3600)+(parseInt(m[2]||0)*60)+parseInt(m[3]||0);}
 
 async function ytFetch(url){
@@ -516,7 +547,8 @@ async function loadBatch(){
       var qIdx=ytQueryIdx%qList.length;
       var q=qList[qIdx];
       var tok=ytPageTokens[qIdx]||'';
-      var sp=new URLSearchParams({part:'snippet',q:q,type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:30,regionCode:YT_REGION,relevanceLanguage:'en',key:'PLACEHOLDER',...(tok?{pageToken:tok}:{})});
+      var fc=freshnessConfig(FEED_MODE);
+      var sp=new URLSearchParams({part:'snippet',q:q,type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:30,regionCode:YT_REGION,relevanceLanguage:'en',order:fc.order,publishedAfter:new Date(Date.now()-fc.days*86400000).toISOString(),key:'PLACEHOLDER',...(tok?{pageToken:tok}:{})});
       var sd=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+sp);
       ytPageTokens[qIdx]=sd.nextPageToken||'';
       if(!sd.nextPageToken)ytQueryIdx++; // only rotate queries once this one's pages are exhausted
@@ -526,10 +558,34 @@ async function loadBatch(){
       var ids=candidates.map(function(v){return v.id.videoId;}).join(',');
       var dd=await ytFetch('https://www.googleapis.com/youtube/v3/videos?'+new URLSearchParams({part:'contentDetails,statistics',id:ids,key:'PLACEHOLDER'}));
       var shorts=(dd.items||[]).filter(function(v){var s=parseIsoDuration(v.contentDetails?.duration);return s>0&&s<=60;});
+      // Filter out disposable/spam channels: require a minimum subscriber
+      // count and channel age. Never let a failed lookup block everything —
+      // fall through to keeping the video rather than starving the feed.
+      var channelIds=[...new Set(shorts.map(function(v){return(snipMap[v.id]||{}).channelId;}).filter(Boolean))];
+      var channelInfo={};
+      if(channelIds.length){
+        try{
+          var cd=await ytFetch('https://www.googleapis.com/youtube/v3/channels?'+new URLSearchParams({part:'statistics,snippet',id:channelIds.join(','),key:'PLACEHOLDER'}));
+          (cd.items||[]).forEach(function(c){
+            channelInfo[c.id]={
+              subs:c.statistics?.hiddenSubscriberCount?0:parseInt(c.statistics?.subscriberCount||0),
+              hidden:!!c.statistics?.hiddenSubscriberCount,
+              ageDays:c.snippet?.publishedAt?(Date.now()-new Date(c.snippet.publishedAt).getTime())/86400000:999
+            };
+          });
+        }catch(e){/* channel lookup failed this round — don't block the batch on it */}
+      }
+      shorts=shorts.filter(function(v){
+        var chId=(snipMap[v.id]||{}).channelId;
+        var info=chId&&channelInfo[chId];
+        if(!info)return true; // no data to judge by — don't over-filter
+        if(info.hidden)return false; // hidden sub counts skew toward throwaway/spam channels
+        return info.subs>=MIN_SUBSCRIBERS&&info.ageDays>=MIN_CHANNEL_AGE_DAYS;
+      });
       shorts.forEach(function(v){
         var id='yt_'+v.id;if(seenIds.has(id))return;seenIds.add(id);
         var sn=snipMap[v.id]||{};
-        vids.push({aweme_id:id,ytVideoId:v.id,title:sn.title||'',author:{unique_id:sn.channelTitle||'YouTuber',avatar:''},digg_count:parseInt(v.statistics?.likeCount||0),comment_count:parseInt(v.statistics?.commentCount||0),cover:sn.thumbnails?.high?.url||''});
+        vids.push({aweme_id:id,ytVideoId:v.id,title:sn.title||'',author:{unique_id:sn.channelTitle||'YouTuber',avatar:'',channelId:sn.channelId||''},digg_count:parseInt(v.statistics?.likeCount||0),comment_count:parseInt(v.statistics?.commentCount||0),cover:sn.thumbnails?.high?.url||''});
         var reel=document.createElement('div');reel.className='reel';reel.style.top=(vids.length-1)*100+'%';
         reel.dataset.ytId=v.id;reel.dataset.ytReady='0';
         if(sn.thumbnails?.high?.url){var img=document.createElement('img');img.src=sn.thumbnails.high.url;img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';reel.appendChild(img);}
