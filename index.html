@@ -29,7 +29,7 @@ body{width:600px;height:600px;overflow:hidden;background:#000;color:#fff;font-fa
 
 /* Main */
 .card{position:absolute;top:0;left:50%;transform:translateX(-50%);height:520px;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#111;}
-body.menu-active .card{height:300px;top:0;}
+body.menu-active .card{height:120px;top:16px;left:auto;right:16px;transform:none;box-shadow:0 4px 20px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);}
 #feed{position:absolute;inset:0;transition:transform .3s cubic-bezier(.4,0,.2,1);}
 .reel{position:absolute;left:0;width:100%;height:100%;background:#000}
 .reel iframe{width:100%;height:100%;border:none;position:absolute;inset:0;outline:none;}
@@ -93,6 +93,17 @@ body.menu-active .menu-wrap{display:flex}
 .prof-thumb{aspect-ratio:9/16;background:#222;border-radius:3px;overflow:hidden;cursor:pointer;min-height:44px;}
 .prof-thumb img{width:100%;height:100%;object-fit:cover}
 .prof-msg{grid-column:1/-1;text-align:center;padding:20px;color:#555;font-size:12px}
+
+/* Search overlay / on-screen keyboard (no physical keyboard on this platform) */
+.search-overlay{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;}
+.search-overlay.open{display:flex}
+.search-bar{width:100%;max-width:480px;min-height:44px;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;font-size:16px;color:#fff;display:flex;align-items:center;}
+.search-cursor{margin-left:2px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.kb-row{display:flex;gap:6px;width:100%;max-width:480px;justify-content:center;}
+.kb-key{flex:1;aspect-ratio:1;max-width:60px;background:rgba(255,255,255,.08);border:2px solid transparent;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;cursor:pointer;min-height:40px;}
+.kb-key.kb-focus{border-color:#00d4ff;box-shadow:0 0 14px rgba(0,212,255,.5);background:rgba(0,212,255,.15);}
+.kb-key.kb-wide{max-width:110px;font-size:12px;}
 </style>
 </head>
 <body>
@@ -154,6 +165,10 @@ body.menu-active .menu-wrap{display:flex}
     <div class="more-item-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>
     <div class="more-item-label">Not Interested</div>
   </div>
+  <div class="more-item focusable" id="moreSearch">
+    <div class="more-item-icon"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>
+    <div class="more-item-label">Search</div>
+  </div>
   <div class="more-cancel focusable" id="moreCancel">Cancel</div>
 </div>
 
@@ -164,6 +179,12 @@ body.menu-active .menu-wrap{display:flex}
   <div class="prof-handle" id="profHandle"></div>
   <div class="prof-close focusable" id="profClose">Close</div>
   <div class="prof-grid" id="profGrid"><div class="prof-msg">Loading...</div></div>
+</div>
+
+<!-- SEARCH (on-screen keyboard — no physical keyboard on this platform) -->
+<div class="search-overlay" id="searchOverlay">
+  <div class="search-bar"><span id="searchQueryText"></span><span class="search-cursor">|</span></div>
+  <div id="kbGrid"></div>
 </div>
 
 <script>
@@ -344,6 +365,104 @@ async function openProfile(){
   }catch(err){grid.innerHTML='<div class="prof-msg">Could not load videos</div>';}
 }
 
+// ── Categories (Home / Trending / Local / Search) ──────────────────────────
+async function switchFeed(mode){
+  if(mode==='local'&&!LOCAL_QUERIES){
+    loader.classList.add('show');
+    var loc=await resolveLocalQueries();
+    if(loc){toast('Near '+loc);}else{toast('Location unavailable — showing general local content');}
+  }
+  if(FEED_MODE===mode)return;
+  FEED_MODE=mode;
+  ytQueryIdx=0;ytPageTokens={};
+  vids=[];feed.innerHTML='';idx=0;
+  loader.classList.add('show');
+  await loadBatch();
+  await show(0,false,1);
+  if(mode!=='local'&&mode!=='search')toast(mode==='home'?'Home':'Trending');
+}
+function resolveLocalQueries(){
+  return new Promise(function(resolve){
+    if(!navigator.geolocation){LOCAL_QUERIES=['local news','food near me','things to do nearby','local events'];resolve(null);return;}
+    navigator.geolocation.getCurrentPosition(async function(pos){
+      try{
+        var r=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+pos.coords.latitude+'&longitude='+pos.coords.longitude+'&localityLanguage=en');
+        var j=await r.json();
+        var city=j.city||j.locality||j.principalSubdivision||'';
+        if(j.countryCode)YT_REGION=j.countryCode.toUpperCase();
+        if(city){LOCAL_QUERIES=[city+' food',city+' local news',city+' events',city+' things to do'];resolve(city);}
+        else{LOCAL_QUERIES=['local news','food near me','things to do nearby','local events'];resolve(null);}
+      }catch(e){LOCAL_QUERIES=['local news','food near me','things to do nearby','local events'];resolve(null);}
+    },function(){LOCAL_QUERIES=['local news','food near me','things to do nearby','local events'];resolve(null);},{timeout:8000});
+  });
+}
+
+// ── Search (on-screen keyboard — no physical keyboard on this platform) ────
+var KB_ROWS=[
+  ['Q','W','E','R','T','Y','U'],
+  ['I','O','P','A','S','D','F'],
+  ['G','H','J','K','L','Z','X'],
+  ['C','V','B','N','M','SP','⌫'],
+  ['GO','CANCEL']
+];
+var kbQuery='',kbRow=0,kbCol=0;
+(function renderKeyboard(){
+  var grid=document.getElementById('kbGrid');
+  KB_ROWS.forEach(function(row,r){
+    var rowEl=document.createElement('div');rowEl.className='kb-row';
+    row.forEach(function(label,c){
+      var key=document.createElement('div');
+      key.className='kb-key'+(label==='SP'||label==='GO'||label==='CANCEL'?' kb-wide':'');
+      key.id='kb-'+r+'-'+c;
+      key.textContent=label==='SP'?'Space':label;
+      key.addEventListener('click',function(){kbRow=r;kbCol=c;activateKey(label);});
+      rowEl.appendChild(key);
+    });
+    grid.appendChild(rowEl);
+  });
+})();
+function openSearch(){
+  kbQuery='';kbRow=0;kbCol=0;
+  document.getElementById('searchQueryText').textContent='';
+  document.getElementById('searchOverlay').classList.add('open');
+  highlightKey();
+}
+function closeSearch(){document.getElementById('searchOverlay').classList.remove('open');}
+function highlightKey(){
+  document.querySelectorAll('.kb-key').forEach(function(k){k.classList.remove('kb-focus');});
+  var el=document.getElementById('kb-'+kbRow+'-'+kbCol);
+  if(el)el.classList.add('kb-focus');
+}
+function handleSearchKey(e){
+  var key=e.key;
+  if(key==='ArrowRight'){kbCol=Math.min(kbCol+1,KB_ROWS[kbRow].length-1);highlightKey();}
+  else if(key==='ArrowLeft'){kbCol=Math.max(kbCol-1,0);highlightKey();}
+  else if(key==='ArrowDown'){kbRow=Math.min(kbRow+1,KB_ROWS.length-1);kbCol=Math.min(kbCol,KB_ROWS[kbRow].length-1);highlightKey();}
+  else if(key==='ArrowUp'){kbRow=Math.max(kbRow-1,0);kbCol=Math.min(kbCol,KB_ROWS[kbRow].length-1);highlightKey();}
+  else if(key==='Enter'){activateKey(KB_ROWS[kbRow][kbCol]);}
+  else if(key==='Escape'){closeSearch();}
+  else return;
+  e.preventDefault();e.stopPropagation();
+}
+function activateKey(label){
+  if(label==='SP')kbQuery+=' ';
+  else if(label==='⌫')kbQuery=kbQuery.slice(0,-1);
+  else if(label==='CANCEL'){closeSearch();return;}
+  else if(label==='GO'){var q=kbQuery.trim();closeSearch();if(q)submitSearch(q);return;}
+  else kbQuery+=label;
+  document.getElementById('searchQueryText').textContent=kbQuery;
+}
+async function submitSearch(q){
+  SEARCH_QUERIES=[q];
+  FEED_MODE='search';ytQueryIdx=0;ytPageTokens={};
+  vids=[];feed.innerHTML='';idx=0;
+  loader.classList.add('show');
+  await loadBatch();
+  await show(0,false,1);
+  toast('Results for "'+q+'"');
+}
+document.getElementById('moreSearch').addEventListener('click',function(){closeMore();openSearch();});
+
 // ── YouTube API ───────────────────────────────────────────────────────────
 var YT_KEYS=[
   'AIzaSyDz_P6WIbRBr31VO7fQX0UcP3tFSBlGEE0','AIzaSyDsL7qek4qkCjmyczIUArhK8krUq2QV3mo',
@@ -356,7 +475,18 @@ var YT_KEYS=[
   'AIzaSyB_3g7oRfcoKqQYqt7UPHwQNTt3BjLD4iw'
 ];
 var ytKeyIdx=0;
-var YT_QUERIES=['#shorts','funny shorts','comedy shorts','viral shorts','trending shorts'];
+var HOME_QUERIES=['#shorts','funny shorts','comedy shorts','viral shorts','trending shorts'];
+var TRENDING_QUERIES=['trending shorts today','viral shorts right now','most viewed shorts this week','breaking viral video','trending challenge shorts'];
+var LOCAL_QUERIES=null; // resolved lazily the first time the Local category is opened
+var SEARCH_QUERIES=null; // set to [query] when a search is submitted
+var FEED_MODE='home'; // 'home' | 'trending' | 'local' | 'search'
+var YT_REGION='US'; // updated once geolocation resolves a country for Local
+function activeQueries(){
+  if(FEED_MODE==='trending')return TRENDING_QUERIES;
+  if(FEED_MODE==='local')return(LOCAL_QUERIES&&LOCAL_QUERIES.length)?LOCAL_QUERIES:HOME_QUERIES;
+  if(FEED_MODE==='search')return SEARCH_QUERIES&&SEARCH_QUERIES.length?SEARCH_QUERIES:HOME_QUERIES;
+  return HOME_QUERIES;
+}
 var ytQueryIdx=0;
 var ytPageTokens={}; // per-query pagination cursor, keyed by query index
 
@@ -382,10 +512,11 @@ async function loadBatch(){
   try{
     while(added<5&&attempts<6){
       attempts++;
-      var qIdx=ytQueryIdx%YT_QUERIES.length;
-      var q=YT_QUERIES[qIdx];
+      var qList=activeQueries();
+      var qIdx=ytQueryIdx%qList.length;
+      var q=qList[qIdx];
       var tok=ytPageTokens[qIdx]||'';
-      var sp=new URLSearchParams({part:'snippet',q:q,type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:30,regionCode:'US',relevanceLanguage:'en',key:'PLACEHOLDER',...(tok?{pageToken:tok}:{})});
+      var sp=new URLSearchParams({part:'snippet',q:q,type:'video',videoDuration:'short',videoEmbeddable:'true',maxResults:30,regionCode:YT_REGION,relevanceLanguage:'en',key:'PLACEHOLDER',...(tok?{pageToken:tok}:{})});
       var sd=await ytFetch('https://www.googleapis.com/youtube/v3/search?'+sp);
       ytPageTokens[qIdx]=sd.nextPageToken||'';
       if(!sd.nextPageToken)ytQueryIdx++; // only rotate queries once this one's pages are exhausted
@@ -480,6 +611,7 @@ document.getElementById('btnStart').addEventListener('click',async function(){
 // ── Navigation override when main screen is active ────────────────────────
 // We intercept BEFORE the global moveFocus so we can handle reel navigation
 document.addEventListener('keydown',function(e){
+  if(document.getElementById('searchOverlay').classList.contains('open')){handleSearchKey(e);return;}
   var mainActive=document.getElementById('screen-main').style.display==='block';
   if(!mainActive)return;
   // If a specific focusable has focus (menu btn, more row, etc.) let global handler work
@@ -505,6 +637,14 @@ document.addEventListener('keydown',function(e){
   switch(e.key){
     case 'ArrowDown':show(idx+1,true,1);e.stopPropagation();break;
     case 'ArrowUp':show(idx-1,true,-1);e.stopPropagation();break;
+    case 'ArrowLeft':{
+      var order=['home','trending','local'];var ci=order.indexOf(FEED_MODE);if(ci===-1)ci=0;
+      switchFeed(order[(ci-1+order.length)%order.length]);e.stopPropagation();break;
+    }
+    case 'ArrowRight':{
+      var order=['home','trending','local'];var ci=order.indexOf(FEED_MODE);if(ci===-1)ci=0;
+      switchFeed(order[(ci+1)%order.length]);e.stopPropagation();break;
+    }
     case 'Enter':
       if(menuOpen)closeMenu();
       else openMenu();
