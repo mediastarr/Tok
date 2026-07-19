@@ -394,7 +394,6 @@ function resolveLocalQueries(){
         var r=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+pos.coords.latitude+'&longitude='+pos.coords.longitude+'&localityLanguage=en');
         var j=await r.json();
         var city=j.city||j.locality||j.principalSubdivision||'';
-        if(j.countryCode)YT_REGION=j.countryCode.toUpperCase();
         if(city){LOCAL_QUERIES=[city+' food',city+' local news',city+' events',city+' things to do'];resolve(city);}
         else{LOCAL_QUERIES=['local news','food near me','things to do nearby','local events'];resolve(null);}
       }catch(e){LOCAL_QUERIES=['local news','food near me','things to do nearby','local events'];resolve(null);}
@@ -492,12 +491,12 @@ var YT_KEYS=[
   'AIzaSyB_3g7oRfcoKqQYqt7UPHwQNTt3BjLD4iw'
 ];
 var ytKeyIdx=0;
-var HOME_QUERIES=['#shorts','funny shorts','comedy shorts','viral shorts','trending shorts'];
+var HOME_QUERIES=['viral shorts','trending shorts','viral video','trending now','viral clip'];
 var TRENDING_QUERIES=['trending shorts today','viral shorts right now','most viewed shorts this week','breaking viral video','trending challenge shorts'];
 var LOCAL_QUERIES=null; // resolved lazily the first time the Local category is opened
 var SEARCH_QUERIES=null; // set to [query] when a search is submitted
 var FEED_MODE='home'; // 'home' | 'trending' | 'local' | 'search'
-var YT_REGION='US'; // updated once geolocation resolves a country for Local
+var YT_REGION='US'; // fixed — never overridden by geolocation, so every category stays US-region
 function activeQueries(){
   if(FEED_MODE==='trending')return TRENDING_QUERIES;
   if(FEED_MODE==='local')return(LOCAL_QUERIES&&LOCAL_QUERIES.length)?LOCAL_QUERIES:HOME_QUERIES;
@@ -507,14 +506,16 @@ function activeQueries(){
 var ytQueryIdx=0;
 var ytPageTokens={}; // per-query pagination cursor, keyed by query index
 
-// Freshness: how recent, and how to sort, per category. Home/Local sort
-// newest-first within a tight window; Trending favors popularity within a
-// wider window; Search stays relevance-ranked so niche queries still return
-// results, with only a loose recency cap.
+// Freshness: how recent, and how to sort, per category. Home and Trending
+// both rank by view count (viral/popular) within a recent window; Local
+// sorts newest-first since local news/events should feel like a live feed;
+// Search stays relevance-ranked so niche queries still return results, with
+// only a loose recency cap.
 function freshnessConfig(mode){
+  if(mode==='home')return{order:'viewCount',days:14};
   if(mode==='trending')return{order:'viewCount',days:30};
   if(mode==='search')return{order:'relevance',days:365};
-  return{order:'date',days:14};
+  return{order:'date',days:14}; // local
 }
 // Channel-quality filter: favor real, established creators over disposable
 // spam/bot channels that get created solely to farm reposted content.
@@ -598,6 +599,22 @@ async function loadBatch(){
   if(loadPending){loadPending=false;loadBatch();}
 }
 
+function createIframe(r,muted){
+  var img=r.querySelector('img');if(img)img.remove();
+  var ytId=r.dataset.ytId;
+  var iframe=document.createElement('iframe');
+  iframe.src='https://www.youtube.com/embed/'+ytId+'?autoplay=1&mute='+(muted?1:0)+'&loop=1&playlist='+ytId+'&controls=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1';
+  iframe.allow='autoplay;fullscreen';iframe.allowFullscreen=true;
+  iframe.tabIndex=-1; // keep out of focus chain — prevents it stealing keyboard focus on load
+  iframe.setAttribute('loading','eager');
+  iframe.style.cssText='width:100%;height:100%;border:none;position:absolute;inset:0;outline:none';
+  r.appendChild(iframe);r.dataset.ytReady='1';r.dataset.ytMuted=muted?'1':'0';
+  iframe.addEventListener('load',function(){
+    if(r.classList.contains('active'))loader.classList.remove('show');
+    if(document.activeElement===iframe)iframe.blur(); // reclaim focus if the browser auto-focused it anyway
+  },{once:true});
+}
+
 async function show(i,animate,dir){
   if(menuOpen)closeMenu();
   if(moreOpen)closeMore();
@@ -621,22 +638,19 @@ async function show(i,animate,dir){
     if(active){
       loader.classList.add('show');
       if(r.dataset.ytReady==='0'){
-        var img=r.querySelector('img');if(img)img.remove();
-        var ytId=r.dataset.ytId;
-        var iframe=document.createElement('iframe');
-        iframe.src='https://www.youtube.com/embed/'+ytId+'?autoplay=1&mute=0&loop=1&playlist='+ytId+'&controls=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1';
-        iframe.allow='autoplay;fullscreen';iframe.allowFullscreen=true;
-        iframe.tabIndex=-1; // keep out of focus chain — prevents it stealing keyboard focus on load
-        iframe.setAttribute('loading','eager');
-        iframe.style.cssText='width:100%;height:100%;border:none;position:absolute;inset:0;outline:none';
-        r.appendChild(iframe);r.dataset.ytReady='1';
-        iframe.addEventListener('load',function(){
-          if(r.classList.contains('active'))loader.classList.remove('show');
-          if(document.activeElement===iframe)iframe.blur(); // reclaim focus if the browser auto-focused it anyway
-        },{once:true});
+        createIframe(r,false); // brand-new active reel — load unmuted directly
       }else{
         var iframe=r.querySelector('iframe');
-        if(iframe)iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');
+        if(iframe){
+          if(r.dataset.ytMuted==='1'){
+            // This reel was prewarmed muted in the background — it's already
+            // loaded, so just seek to the start and unmute instead of reloading.
+            iframe.contentWindow.postMessage('{"event":"command","func":"seekTo","args":[0,true]}','*');
+            iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}','*');
+            r.dataset.ytMuted='0';
+          }
+          iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');
+        }
         loader.classList.remove('show');
       }
       var d=vids[n];
@@ -644,6 +658,8 @@ async function show(i,animate,dir){
       document.getElementById('vidCap').textContent=d.title||'';
       document.getElementById('vidStats').innerHTML='❤️ '+fmt(d.digg_count)+'  💬 '+fmt(d.comment_count||0);
       if(n>=vids.length-5)loadBatch();
+      var nextReel=reels[n+1];
+      if(nextReel&&nextReel.dataset.ytReady==='0')createIframe(nextReel,true); // prewarm muted, ready before the next swipe
     }else{
       var iframe=r.querySelector('iframe');
       if(iframe)iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
